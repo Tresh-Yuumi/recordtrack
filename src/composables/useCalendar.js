@@ -1,0 +1,226 @@
+import { ref } from 'vue'
+import { supabase, MY_USER_ID } from '../lib/supabase.js'
+
+/* ================================================================
+ *  useCalendar — 封装所有数据库操作、图片上传、JSON 导入导出
+ * ================================================================ */
+
+export function useCalendar() {
+  const loading = ref(false)
+
+  // ────────────────── 艺人 ──────────────────
+
+  async function fetchArtists() {
+    loading.value = true
+    const { data, error } = await supabase
+      .from('artists')
+      .select('*')
+      .eq('user_id', MY_USER_ID)
+      .order('name')
+    loading.value = false
+    if (error) throw error
+    return data
+  }
+
+  async function addArtist(artist) {
+    const { data, error } = await supabase
+      .from('artists')
+      .insert({ ...artist, user_id: MY_USER_ID })
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  async function updateArtist(id, updates) {
+    const { data, error } = await supabase
+      .from('artists')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', MY_USER_ID)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  async function deleteArtist(id) {
+    const { error } = await supabase
+      .from('artists')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', MY_USER_ID)
+    if (error) throw error
+  }
+
+  // ────────────────── 行程 ──────────────────
+
+  async function fetchEvents() {
+    loading.value = true
+    const { data, error } = await supabase
+      .from('events')
+      .select('*, artists(*)')
+      .eq('user_id', MY_USER_ID)
+      .order('start_date', { ascending: true })
+    loading.value = false
+    if (error) throw error
+    return data
+  }
+
+  async function fetchEventsByArtist(artistId) {
+    loading.value = true
+    let query = supabase
+      .from('events')
+      .select('*, artists(*)')
+      .eq('user_id', MY_USER_ID)
+      .order('start_date', { ascending: true })
+    if (artistId) {
+      query = query.eq('artist_id', artistId)
+    }
+    const { data, error } = await query
+    loading.value = false
+    if (error) throw error
+    return data
+  }
+
+  async function addEvent(event) {
+    const { data, error } = await supabase
+      .from('events')
+      .insert({ ...event, user_id: MY_USER_ID })
+      .select('*, artists(*)')
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  async function updateEvent(id, updates) {
+    const { data, error } = await supabase
+      .from('events')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', MY_USER_ID)
+      .select('*, artists(*)')
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  async function deleteEvent(id) {
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', MY_USER_ID)
+    if (error) throw error
+  }
+
+  // ────────────────── 图片上传 ──────────────────
+
+  async function uploadImage(file) {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`
+    const filePath = `public/${fileName}`
+
+    const { error } = await supabase.storage
+      .from('event-images')
+      .upload(filePath, file)
+
+    if (error) throw error
+
+    const { data } = supabase.storage
+      .from('event-images')
+      .getPublicUrl(filePath)
+
+    return data.publicUrl
+  }
+
+  async function removeImage(url) {
+    // 从完整 URL 中提取 bucket 中的路径
+    const pathMatch = url.match(/event-images\/(.+)$/)
+    if (!pathMatch) return
+    const filePath = pathMatch[1]
+    const { error } = await supabase.storage
+      .from('event-images')
+      .remove([filePath])
+    if (error) console.warn('删除图片失败:', error.message)
+  }
+
+  // ────────────────── JSON 导出 / 导入 ──────────────────
+
+  async function exportData() {
+    loading.value = true
+    const { data: events } = await supabase
+      .from('events')
+      .select('*')
+      .eq('user_id', MY_USER_ID)
+    const { data: artists } = await supabase
+      .from('artists')
+      .select('*')
+      .eq('user_id', MY_USER_ID)
+    loading.value = false
+
+    const exportObj = { events, artists, exportedAt: new Date().toISOString() }
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `record-track-backup-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  async function importData(jsonFile) {
+    loading.value = true
+    const text = await jsonFile.text()
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      loading.value = false
+      throw new Error('JSON 格式无效')
+    }
+
+    // 验证必要字段
+    if (!data.events || !data.artists) {
+      loading.value = false
+      throw new Error('备份文件缺少 events 或 artists 数据')
+    }
+
+    // 导入艺人（upsert）
+    const artistsWithUser = data.artists.map((a) => ({ ...a, user_id: MY_USER_ID }))
+    const { error: artistErr } = await supabase
+      .from('artists')
+      .upsert(artistsWithUser, { onConflict: 'id' })
+
+    // 导入行程（upsert）
+    const eventsWithUser = data.events.map((e) => ({ ...e, user_id: MY_USER_ID }))
+    const { error: eventErr } = await supabase
+      .from('events')
+      .upsert(eventsWithUser, { onConflict: 'id' })
+
+    loading.value = false
+
+    if (artistErr) throw artistErr
+    if (eventErr) throw eventErr
+
+    return {
+      artistCount: artistsWithUser.length,
+      eventCount: eventsWithUser.length,
+    }
+  }
+
+  return {
+    loading,
+    // 艺人
+    fetchArtists, addArtist, updateArtist, deleteArtist,
+    // 行程
+    fetchEvents, fetchEventsByArtist, addEvent, updateEvent, deleteEvent,
+    // 图片
+    uploadImage, removeImage,
+    // 导入导出
+    exportData, importData,
+  }
+}
