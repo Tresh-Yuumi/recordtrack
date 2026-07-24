@@ -13,13 +13,25 @@ import interactionPlugin from '@fullcalendar/interaction'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
+  artists: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['dateClick', 'eventClick'])
 
 const calendarRef = ref(null)
 
+// 根据 artist_ids 查找艺人信息（兼容旧 artist_id）
+function getEventArtists(dbEvent) {
+  const ids = dbEvent.artist_ids?.length
+    ? dbEvent.artist_ids
+    : (dbEvent.artist_id ? [dbEvent.artist_id] : [])
+  return ids.map((id) => props.artists.find((a) => a.id === id)).filter(Boolean)
+}
+
 function formatEventForCalendar(dbEvent) {
-  const artist = dbEvent.artists || {}
+  const eventArtists = getEventArtists(dbEvent)
+  const firstArtist = eventArtists[0] || {}
+  const artistNames = eventArtists.map((a) => `${a.emoji || ''}${a.name}`).join(' ')
+
   const startStr = dbEvent.is_all_day
     ? dbEvent.start_date
     : `${dbEvent.start_date}T${dbEvent.start_time || '00:00'}`
@@ -29,12 +41,12 @@ function formatEventForCalendar(dbEvent) {
 
   return {
     id: dbEvent.id,
-    title: `${artist.emoji || ''} ${dbEvent.title}`,
+    title: `${artistNames} ${dbEvent.title}`,
     start: startStr,
     end: endStr,
     allDay: dbEvent.is_all_day,
-    backgroundColor: artist.color || '#999',
-    borderColor: artist.color || '#999',
+    backgroundColor: firstArtist.color || '#999',
+    borderColor: firstArtist.color || '#999',
     textColor: '#fff',
     extendedProps: { ...dbEvent },
   }

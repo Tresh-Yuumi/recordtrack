@@ -12,9 +12,16 @@
     <template v-if="mode === 'detail'">
       <n-descriptions label-placement="left" bordered :column="2" size="small">
         <n-descriptions-item label="艺人">
-          <n-tag :color="{ color: eventData.artists?.color }" size="small">
-            {{ eventData.artists?.emoji }} {{ eventData.artists?.name }}
-          </n-tag>
+          <n-space>
+            <n-tag
+              v-for="a in detailArtists"
+              :key="a.id"
+              :color="{ color: a.color }"
+              size="small"
+            >
+              {{ a.emoji }} {{ a.name }}
+            </n-tag>
+          </n-space>
         </n-descriptions-item>
         <n-descriptions-item label="分类">
           <n-tag :type="eventData.category === '线上' ? 'info' : 'success'" size="small">
@@ -58,22 +65,22 @@
     <!-- ============ 创建 / 编辑模式 ============ -->
     <template v-else>
       <n-form ref="formRef" :model="form" label-placement="top" :rules="rules">
-        <!-- 艺人选择（标签点选） -->
-        <n-form-item label="艺人" path="artist_id">
+        <!-- 艺人选择（多选标签） -->
+        <n-form-item label="艺人（可多选）" path="artist_ids">
           <n-space>
             <n-tag
               v-for="a in artists"
               :key="a.id"
-              :type="form.artist_id === a.id ? 'primary' : 'default'"
+              :type="form.artist_ids.includes(a.id) ? 'primary' : 'default'"
               checkable
-              :checked="form.artist_id === a.id"
+              :checked="form.artist_ids.includes(a.id)"
               :style="{
                 cursor: 'pointer',
                 borderColor: a.color,
-                color: form.artist_id === a.id ? '#fff' : a.color,
-                backgroundColor: form.artist_id === a.id ? a.color : 'transparent',
+                color: form.artist_ids.includes(a.id) ? '#fff' : a.color,
+                backgroundColor: form.artist_ids.includes(a.id) ? a.color : 'transparent',
               }"
-              @click="form.artist_id = a.id"
+              @click="toggleArtist(a.id)"
             >
               {{ a.emoji || '' }} {{ a.name }}
             </n-tag>
@@ -244,8 +251,14 @@ const artistOptions = computed(() =>
 
 const eventData = computed(() => props.editData || {})
 
+// 详情模式：根据 artist_ids 查找艺人
+const detailArtists = computed(() => {
+  const ids = getArtistIds(eventData.value)
+  return ids.map((id) => props.artists.find((a) => a.id === id)).filter(Boolean)
+})
+
 const form = reactive({
-  artist_id: null,
+  artist_ids: [],
   title: '',
   type: '',
   category: '',
@@ -267,7 +280,9 @@ watch(dateRange, (val) => {
 })
 
 const rules = {
-  artist_id: [{ required: true, message: '请选择艺人' }],
+  artist_ids: [
+    { required: true, message: '请至少选择一位艺人', validator: (_, v) => v?.length > 0 },
+  ],
   title: [{ required: true, message: '请输入标题' }],
   type: [{ required: true, message: '请选择行程类型' }],
   category: [{ required: true, message: '请选择线上/线下' }],
@@ -295,15 +310,48 @@ function switchMode(m) {
   emit('mode-change', m)
 }
 
+// 多选：切换艺人
+function toggleArtist(id) {
+  const idx = form.artist_ids.indexOf(id)
+  if (idx >= 0) {
+    form.artist_ids.splice(idx, 1)
+  } else {
+    form.artist_ids.push(id)
+  }
+}
+
+// 兼容新旧数据：从 editData 中提取艺人 ID 列表
+function getArtistIds(data) {
+  if (!data) return []
+  if (data.artist_ids?.length) return data.artist_ids
+  // 兼容旧数据（单 artist_id）
+  if (data.artist_id) return [data.artist_id]
+  if (data.artists?.id) return [data.artists.id]
+  return []
+}
+
 // 加载已有数据到表单
 watch(
   () => props.editData,
   (data) => {
-    if (!data || props.mode === 'create') {
+    if (!data) {
       resetForm()
       return
     }
-    form.artist_id = data.artist_id || data.artists?.id || null
+
+    if (props.mode === 'create') {
+      // 创建模式：只重置表单，但保留从日历点击传来的日期
+      resetForm()
+      if (data.start_date) {
+        form.start_date = data.start_date
+        form.end_date = data.end_date || data.start_date
+        dateRange.value = [data.start_date, data.end_date || data.start_date]
+      }
+      return
+    }
+
+    // 编辑/详情模式：加载完整数据
+    form.artist_ids = [...getArtistIds(data)]
     form.title = data.title || ''
     form.type = data.type || ''
     form.category = data.category || ''
@@ -316,7 +364,6 @@ watch(
     dateRange.value = data.start_date && data.end_date
       ? [data.start_date, data.end_date]
       : null
-    // 独立 ref 绑定时间
     startTime.value = data.start_time || null
     endTime.value = data.end_time || null
   },
@@ -324,7 +371,7 @@ watch(
 )
 
 function resetForm() {
-  form.artist_id = null
+  form.artist_ids = []
   form.title = ''
   form.type = ''
   form.category = ''
@@ -369,6 +416,8 @@ async function handleSubmit() {
       end_date: form.is_all_day
         ? form.start_date
         : (form.end_date || form.start_date),
+      // 兼容旧表：artist_id 取数组第一位
+      artist_id: form.artist_ids[0] || null,
     }
     emit('submit', payload)
   } finally {

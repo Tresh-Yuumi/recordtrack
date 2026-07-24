@@ -59,7 +59,7 @@ export function useCalendar() {
     loading.value = true
     const { data, error } = await supabase
       .from('events')
-      .select('*, artists(*)')
+      .select('*')
       .eq('user_id', MY_USER_ID)
       .order('start_date', { ascending: true })
     loading.value = false
@@ -71,11 +71,12 @@ export function useCalendar() {
     loading.value = true
     let query = supabase
       .from('events')
-      .select('*, artists(*)')
+      .select('*')
       .eq('user_id', MY_USER_ID)
       .order('start_date', { ascending: true })
     if (artistId) {
-      query = query.eq('artist_id', artistId)
+      // 使用 contains 查询 UUID[] 数组
+      query = query.contains('artist_ids', [artistId])
     }
     const { data, error } = await query
     loading.value = false
@@ -87,7 +88,7 @@ export function useCalendar() {
     const { data, error } = await supabase
       .from('events')
       .insert({ ...event, user_id: MY_USER_ID })
-      .select('*, artists(*)')
+      .select('*')
       .single()
     if (error) throw error
     return data
@@ -99,7 +100,7 @@ export function useCalendar() {
       .update(updates)
       .eq('id', id)
       .eq('user_id', MY_USER_ID)
-      .select('*, artists(*)')
+      .select('*')
       .single()
     if (error) throw error
     return data

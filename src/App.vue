@@ -64,6 +64,7 @@
       <main class="calendar-area">
         <CalendarView
           :events="filteredEvents"
+          :artists="artists"
           :loading="loading"
           @date-click="openCreate"
           @event-click="openDetail"
@@ -118,7 +119,11 @@ const selectedEvent = ref(null)
 // ── 筛选后的事件 ──
 const filteredEvents = computed(() => {
   if (!activeFilter.value) return events.value
-  return events.value.filter((e) => e.artist_id === activeFilter.value)
+  return events.value.filter((e) => {
+    // 兼容新旧格式：artist_ids 数组 或 旧 artist_id 单值
+    const ids = e.artist_ids?.length ? e.artist_ids : (e.artist_id ? [e.artist_id] : [])
+    return ids.includes(activeFilter.value)
+  })
 })
 
 // ── 初始化 ──
@@ -146,6 +151,7 @@ function openCreate(dateStr) {
     start_date: dateStr,
     end_date: dateStr,
     is_all_day: false,
+    artist_ids: [],
     image_urls: [],
   }
   modalMode.value = 'create'
