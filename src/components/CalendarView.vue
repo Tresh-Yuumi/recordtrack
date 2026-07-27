@@ -10,7 +10,6 @@ import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import { getTextColor } from '../config/artists.js'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -30,10 +29,8 @@ function getEventArtists(dbEvent) {
 
 function formatEventForCalendar(dbEvent) {
   const eventArtists = getEventArtists(dbEvent)
-  const firstArtist = eventArtists[0] || {}
   // 日历中仅显示艺人图标（爱心），不显示名字以节省空间
   const artistIcons = eventArtists.map((a) => a.emoji || '').join('')
-  const bgColor = firstArtist.color || '#999'
 
   const startStr = dbEvent.is_all_day
     ? dbEvent.start_date
@@ -48,9 +45,9 @@ function formatEventForCalendar(dbEvent) {
     start: startStr,
     end: endStr,
     allDay: dbEvent.is_all_day,
-    backgroundColor: bgColor,
-    borderColor: bgColor,
-    textColor: getTextColor(bgColor),
+    backgroundColor: '#000',
+    borderColor: '#000',
+    textColor: '#fff',
     extendedProps: { ...dbEvent },
   }
 }

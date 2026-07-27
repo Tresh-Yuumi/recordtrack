@@ -39,10 +39,10 @@
             size="small"
             :style="{
               cursor: 'pointer',
-              opacity: activeFilter && activeFilter !== artist.id ? 0.4 : 1,
-              borderColor: activeFilter === artist.id ? artist.color : getTagColor(artist.color),
-              color: activeFilter === artist.id ? getTextColor(artist.color) : getTagColor(artist.color),
-              backgroundColor: activeFilter === artist.id ? artist.color : 'transparent',
+              opacity: activeFilter && activeFilter !== artist.id ? 0.3 : 1,
+              borderColor: activeFilter === artist.id ? '#000' : '#ccc',
+              color: activeFilter === artist.id ? '#fff' : '#333',
+              backgroundColor: activeFilter === artist.id ? '#000' : '#fff',
             }"
             @click="toggleFilter(artist.id)"
           >
@@ -96,7 +96,6 @@ import {
 import { zhCN } from 'naive-ui'
 import CalendarView from './components/CalendarView.vue'
 import EventModal from './components/EventModal.vue'
-import { getTextColor, getTagColor } from './config/artists.js'
 import { useCalendar } from './composables/useCalendar.js'
 
 const { message } = createDiscreteApi(['message'])
