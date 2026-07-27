@@ -40,8 +40,8 @@
             :style="{
               cursor: 'pointer',
               opacity: activeFilter && activeFilter !== artist.id ? 0.4 : 1,
-              borderColor: artist.color,
-              color: activeFilter === artist.id ? '#fff' : artist.color,
+              borderColor: activeFilter === artist.id ? artist.color : getTagColor(artist.color),
+              color: activeFilter === artist.id ? getTextColor(artist.color) : getTagColor(artist.color),
               backgroundColor: activeFilter === artist.id ? artist.color : 'transparent',
             }"
             @click="toggleFilter(artist.id)"
@@ -96,6 +96,7 @@ import {
 import { zhCN } from 'naive-ui'
 import CalendarView from './components/CalendarView.vue'
 import EventModal from './components/EventModal.vue'
+import { getTextColor, getTagColor } from './config/artists.js'
 import { useCalendar } from './composables/useCalendar.js'
 
 const { message } = createDiscreteApi(['message'])

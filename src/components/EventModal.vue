@@ -16,7 +16,7 @@
             <n-tag
               v-for="a in detailArtists"
               :key="a.id"
-              :color="{ color: a.color }"
+              :color="{ color: a.color, textColor: getTextColor(a.color) }"
               size="small"
             >
               {{ a.emoji }} {{ a.name }}
@@ -77,7 +77,7 @@
               :style="{
                 cursor: 'pointer',
                 borderColor: a.color,
-                color: form.artist_ids.includes(a.id) ? '#fff' : a.color,
+                color: form.artist_ids.includes(a.id) ? getTextColor(a.color) : getTagColor(a.color),
                 backgroundColor: form.artist_ids.includes(a.id) ? a.color : 'transparent',
               }"
               @click="toggleArtist(a.id)"
@@ -224,6 +224,7 @@ import {
   NDescriptions, NDescriptionsItem, NText, createDiscreteApi,
 } from 'naive-ui'
 import { EVENT_TYPES, EVENT_CATEGORIES } from '../config/eventTypes.js'
+import { getTextColor, getTagColor } from '../config/artists.js'
 
 const { message } = createDiscreteApi(['message'])
 

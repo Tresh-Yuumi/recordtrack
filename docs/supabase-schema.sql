@@ -56,7 +56,7 @@ CREATE POLICY "anon_delete_events"  ON events  FOR DELETE USING (true);
 
 -- 5. 插入三位默认艺人
 INSERT INTO artists (id, user_id, name, emoji, color) VALUES
-  ('11111111-aaaa-1111-aaaa-111111111111', '5cb725e8-95f5-40ce-a0d7-bd0e28740362', 'Perth',  '🐨', '#FF6B6B'),
-  ('22222222-bbbb-2222-bbbb-222222222222', '5cb725e8-95f5-40ce-a0d7-bd0e28740362', 'Santa',  '🎅', '#4ECDC4'),
-  ('33333333-cccc-3333-cccc-333333333333', '5cb725e8-95f5-40ce-a0d7-bd0e28740362', 'Domiia', '🌸', '#FFD93D')
+  ('11111111-aaaa-1111-aaaa-111111111111', '5cb725e8-95f5-40ce-a0d7-bd0e28740362', 'Perth',  '🖤', '#000000'),
+  ('22222222-bbbb-2222-bbbb-222222222222', '5cb725e8-95f5-40ce-a0d7-bd0e28740362', 'Santa',  '🤍', '#FFFFFF'),
+  ('33333333-cccc-3333-cccc-333333333333', '5cb725e8-95f5-40ce-a0d7-bd0e28740362', 'Domiia', '❤️', '#FF0000')
 ON CONFLICT (id) DO NOTHING;
