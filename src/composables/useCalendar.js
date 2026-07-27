@@ -62,6 +62,7 @@ export function useCalendar() {
       .select('*')
       .eq('user_id', MY_USER_ID)
       .order('start_date', { ascending: true })
+      .order('start_time', { ascending: true, nullsFirst: true })
     loading.value = false
     if (error) throw error
     return data
@@ -74,6 +75,7 @@ export function useCalendar() {
       .select('*')
       .eq('user_id', MY_USER_ID)
       .order('start_date', { ascending: true })
+      .order('start_time', { ascending: true, nullsFirst: true })
     if (artistId) {
       // 使用 contains 查询 UUID[] 数组
       query = query.contains('artist_ids', [artistId])

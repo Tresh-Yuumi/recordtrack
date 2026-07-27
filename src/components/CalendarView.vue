@@ -29,7 +29,7 @@ function getEventArtists(dbEvent) {
 
 function formatEventForCalendar(dbEvent) {
   const eventArtists = getEventArtists(dbEvent)
-  // 日历中仅显示艺人图标（爱心），不显示名字以节省空间
+  // 日历中仅显示艺人图标（爱心），不显示名字
   const artistIcons = eventArtists.map((a) => a.emoji || '').join('')
 
   const startStr = dbEvent.is_all_day
@@ -41,7 +41,7 @@ function formatEventForCalendar(dbEvent) {
 
   return {
     id: dbEvent.id,
-    title: `${artistIcons} ${dbEvent.title}`,
+    title: `${artistIcons}${dbEvent.title}`,
     start: startStr,
     end: endStr,
     allDay: dbEvent.is_all_day,
@@ -77,6 +77,7 @@ const calendarOptions = shallowRef({
   navLinks: false,
   height: 'auto',
   eventDisplay: 'block',
+  displayEventTime: false,
   dateClick: (arg) => {
     emit('dateClick', arg.dateStr)
   },
