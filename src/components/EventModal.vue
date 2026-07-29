@@ -92,87 +92,90 @@
           <n-input v-model:value="form.title" placeholder="例如：品牌活动站台" />
         </n-form-item>
 
-        <!-- 类型 -->
-        <n-form-item label="行程类型" path="type">
-          <n-space>
-            <n-button
-              v-for="t in EVENT_TYPES"
-              :key="t"
-              :type="form.type === t ? 'primary' : 'default'"
-              size="small"
-              @click="form.type = t"
-            >
-              {{ t }}
-            </n-button>
-          </n-space>
-        </n-form-item>
+        <!-- 双列：类型 | 分类 -->
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="行程类型" path="type">
+            <n-space>
+              <n-button
+                v-for="t in EVENT_TYPES"
+                :key="t"
+                :type="form.type === t ? 'primary' : 'default'"
+                size="tiny"
+                @click="form.type = t"
+              >
+                {{ t }}
+              </n-button>
+            </n-space>
+          </n-form-item-gi>
+          <n-form-item-gi label="分类" path="category">
+            <n-space>
+              <n-tag
+                v-for="c in EVENT_CATEGORIES"
+                :key="c"
+                :type="form.category === c ? 'primary' : 'default'"
+                checkable
+                :checked="form.category === c"
+                @click="form.category = c"
+                style="cursor: pointer"
+              >
+                {{ c }}
+              </n-tag>
+            </n-space>
+          </n-form-item-gi>
+        </n-grid>
 
-        <!-- 线上 / 线下 -->
-        <n-form-item label="分类" path="category">
-          <n-space>
-            <n-tag
-              v-for="c in EVENT_CATEGORIES"
-              :key="c"
-              :type="form.category === c ? 'primary' : 'default'"
-              checkable
-              :checked="form.category === c"
-              @click="form.category = c"
-              style="cursor: pointer"
-            >
-              {{ c }}
-            </n-tag>
-          </n-space>
-        </n-form-item>
-
-        <!-- 日期范围 -->
-        <n-form-item label="日期" path="start_date">
-          <n-date-picker
-            v-model:formatted-value="dateRange"
-            type="daterange"
-            format="yyyy-MM-dd"
-            value-format="yyyy-MM-dd"
-            clearable
-          />
-        </n-form-item>
-
-        <!-- 全天开关 -->
-        <n-form-item label="全天">
-          <n-switch v-model:value="form.is_all_day" />
-        </n-form-item>
-
-        <!-- 时间选择（非全天时显示）。注意：n-time-picker 必须绑定独立 ref，不能绑定 reactive 属性 -->
-        <n-form-item v-if="!form.is_all_day" label="时间">
-          <n-space align="center">
-            <n-time-picker
-              v-model:value="startTime"
-              format="HH:mm"
+        <!-- 双列：日期 | 时间 -->
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="日期" path="start_date">
+            <n-date-picker
+              v-model:formatted-value="dateRange"
+              type="daterange"
+              format="yyyy-MM-dd"
+              value-format="yyyy-MM-dd"
               clearable
-              placeholder="开始"
             />
-            <n-text depth="3">~</n-text>
-            <n-time-picker
-              v-model:value="endTime"
-              format="HH:mm"
-              clearable
-              placeholder="结束"
+          </n-form-item-gi>
+          <n-form-item-gi label="时间">
+            <n-space align="center" :size="8">
+              <template v-if="!form.is_all_day">
+                <n-time-picker
+                  v-model:value="startTime"
+                  format="HH:mm"
+                  clearable
+                  placeholder="开始"
+                  style="width: 90px"
+                />
+                <n-text depth="3">~</n-text>
+                <n-time-picker
+                  v-model:value="endTime"
+                  format="HH:mm"
+                  clearable
+                  placeholder="结束"
+                  style="width: 90px"
+                />
+              </template>
+              <n-text v-else depth="3">全天</n-text>
+              <n-divider vertical />
+              <n-switch v-model:value="form.is_all_day" size="small" />
+              <n-text depth="3" style="font-size: 12px; white-space: nowrap">全天</n-text>
+            </n-space>
+          </n-form-item-gi>
+        </n-grid>
+
+        <!-- 双列：地点 | 备注 -->
+        <n-grid :cols="2" :x-gap="16">
+          <n-form-item-gi label="地点">
+            <n-input v-model:value="form.location" placeholder="城市 / 场馆名" />
+          </n-form-item-gi>
+          <n-form-item-gi label="备注">
+            <n-input
+              v-model:value="form.notes"
+              type="textarea"
+              placeholder="其他备注信息"
+              :rows="2"
             />
-          </n-space>
-        </n-form-item>
-
-        <!-- 地点 -->
-        <n-form-item label="地点">
-          <n-input v-model:value="form.location" placeholder="城市 / 场馆名" />
-        </n-form-item>
-
-        <!-- 备注 -->
-        <n-form-item label="备注">
-          <n-input
-            v-model:value="form.notes"
-            type="textarea"
-            placeholder="其他备注信息"
-            :rows="2"
-          />
-        </n-form-item>
+          </n-form-item-gi>
+        </n-grid>
 
         <!-- 图片上传 -->
         <n-form-item label="相关图片">
@@ -219,9 +222,9 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import {
-  NModal, NForm, NFormItem, NInput, NSelect, NButton, NSpace,
+  NModal, NForm, NFormItem, NFormItemGi, NGrid, NInput, NSelect, NButton, NSpace,
   NTag, NDatePicker, NTimePicker, NSwitch, NUpload, NImage,
-  NDescriptions, NDescriptionsItem, NText, createDiscreteApi,
+  NDescriptions, NDescriptionsItem, NText, NDivider, createDiscreteApi,
 } from 'naive-ui'
 import { EVENT_TYPES, EVENT_CATEGORIES } from '../config/eventTypes.js'
 
