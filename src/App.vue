@@ -8,7 +8,7 @@
         </div>
         <div class="header-right">
           <n-space>
-            <n-button type="primary" size="small" @click="openCreate(new Date().toISOString().slice(0, 10))">
+            <n-button type="primary" size="small" @click="openCreate(new Date().toISOString().slice(0, 10))" @mouseenter="preloadEventModal">
               <template #icon>➕</template> 新增行程
             </n-button>
             <n-button size="small" @click="handleExport" :loading="loading">
@@ -61,7 +61,7 @@
       </section>
 
       <!-- ========== 日历视图 ========== -->
-      <main class="calendar-area">
+      <main class="calendar-area" @mouseenter="preloadEventModal">
         <CalendarView
           :events="filteredEvents"
           :artists="artists"
@@ -88,15 +88,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import {
   NConfigProvider, NButton, NSpace, NTag, NDivider, NText, NUpload,
   createDiscreteApi,
 } from 'naive-ui'
 import { zhCN } from 'naive-ui'
 import CalendarView from './components/CalendarView.vue'
-import EventModal from './components/EventModal.vue'
 import { useCalendar } from './composables/useCalendar.js'
+
+// EventModal 懒加载：只在首次打开弹窗时下载
+const EventModal = defineAsyncComponent(() => import('./components/EventModal.vue'))
+
+// hover 按钮时预加载，确保首次点击已就绪
+function preloadEventModal() {
+  import('./components/EventModal.vue')
+}
 
 const { message } = createDiscreteApi(['message'])
 
