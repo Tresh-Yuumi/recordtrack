@@ -27,46 +27,67 @@
         </div>
       </header>
 
-      <!-- ========== 艺人筛选栏 ========== -->
+      <!-- ========== 筛选栏：艺人 + 视图切换 ========== -->
       <section class="filter-bar">
-        <n-space align="center">
-          <n-text depth="3" style="font-size: 13px">筛选艺人：</n-text>
-          <n-tag
-            v-for="artist in artists"
-            :key="artist.id"
-            :type="activeFilter === artist.id ? 'primary' : 'default'"
-            :bordered="activeFilter !== artist.id"
-            size="small"
-            :style="{
-              cursor: 'pointer',
-              opacity: activeFilter && activeFilter !== artist.id ? 0.3 : 1,
-              borderColor: activeFilter === artist.id ? '#000' : '#ccc',
-              color: activeFilter === artist.id ? '#fff' : '#333',
-              backgroundColor: activeFilter === artist.id ? '#000' : '#fff',
-            }"
-            @click="toggleFilter(artist.id)"
-          >
-            {{ artist.emoji || '' }} {{ artist.name }}
-          </n-tag>
-          <n-divider vertical />
-          <n-tag
-            :type="!activeFilter ? 'primary' : 'default'"
-            size="small"
-            style="cursor: pointer"
-            @click="activeFilter = null"
-          >
-            全部
-          </n-tag>
-        </n-space>
+        <div class="filter-row">
+          <n-space align="center">
+            <n-text depth="3" style="font-size: 13px">筛选艺人：</n-text>
+            <n-tag
+              v-for="artist in artists"
+              :key="artist.id"
+              :type="activeFilter === artist.id ? 'primary' : 'default'"
+              :bordered="activeFilter !== artist.id"
+              size="small"
+              :style="{
+                cursor: 'pointer',
+                opacity: activeFilter && activeFilter !== artist.id ? 0.3 : 1,
+                borderColor: activeFilter === artist.id ? '#000' : '#ccc',
+                color: activeFilter === artist.id ? '#fff' : '#333',
+                backgroundColor: activeFilter === artist.id ? '#000' : '#fff',
+              }"
+              @click="toggleFilter(artist.id)"
+            >
+              {{ artist.emoji || '' }} {{ artist.name }}
+            </n-tag>
+            <n-divider vertical />
+            <n-tag
+              :type="!activeFilter ? 'primary' : 'default'"
+              size="small"
+              style="cursor: pointer"
+              @click="activeFilter = null"
+            >
+              全部
+            </n-tag>
+          </n-space>
+          <n-space>
+            <n-button
+              :type="viewMode === 'calendar' ? 'primary' : 'default'"
+              size="tiny"
+              @click="viewMode = 'calendar'"
+            >📅 日历</n-button>
+            <n-button
+              :type="viewMode === 'list' ? 'primary' : 'default'"
+              size="tiny"
+              @click="viewMode = 'list'"
+            >📋 列表</n-button>
+          </n-space>
+        </div>
       </section>
 
-      <!-- ========== 日历视图 ========== -->
-      <main class="calendar-area" @mouseenter="preloadEventModal">
+      <!-- ========== 视图区域 ========== -->
+      <main class="content-area" @mouseenter="preloadEventModal">
         <CalendarView
+          v-if="viewMode === 'calendar'"
           :events="filteredEvents"
           :artists="artists"
           :loading="loading"
           @date-click="openCreate"
+          @event-click="openDetail"
+        />
+        <EventListView
+          v-else
+          :events="filteredEvents"
+          :artists="artists"
           @event-click="openDetail"
         />
       </main>
@@ -95,6 +116,7 @@ import {
 } from 'naive-ui'
 import { zhCN } from 'naive-ui'
 import CalendarView from './components/CalendarView.vue'
+import EventListView from './components/EventListView.vue'
 import { useCalendar } from './composables/useCalendar.js'
 
 // EventModal 懒加载：只在首次打开弹窗时下载
@@ -122,6 +144,7 @@ const activeFilter = ref(null)
 const modalVisible = ref(false)
 const modalMode = ref('create')
 const selectedEvent = ref(null)
+const viewMode = ref('calendar')  // 'calendar' | 'list'
 
 // ── 筛选后的事件 ──
 const filteredEvents = computed(() => {
@@ -280,10 +303,16 @@ body {
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
-.calendar-area {
+.content-area {
   background: #fff;
   border-radius: 10px;
   padding: 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 </style>
