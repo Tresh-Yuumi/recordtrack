@@ -33,9 +33,7 @@
         <n-descriptions-item :label="dateLabel">
           {{ formattedDate }}
         </n-descriptions-item>
-        <n-descriptions-item label="时间">
-          {{ eventData.is_all_day ? '全天' : `${eventData.start_time || '--'} ~ ${eventData.end_time || '--'}` }}
-        </n-descriptions-item>
+        <n-descriptions-item label="时间">{{ detailTime }}</n-descriptions-item>
         <n-descriptions-item label="地点" :span="2">{{ eventData.location || '--' }}</n-descriptions-item>
         <n-descriptions-item label="备注" :span="2">{{ eventData.notes || '--' }}</n-descriptions-item>
       </n-descriptions>
@@ -136,14 +134,20 @@
             />
           </n-form-item-gi>
           <n-form-item-gi label="时间">
-            <n-space align="center" :size="8">
-              <template v-if="!form.is_all_day">
+            <n-space vertical :size="10">
+              <n-space :size="8">
+                <n-button size="small" :type="timeMode === 'allDay' ? 'primary' : 'default'" @click="setTimeMode('allDay')">全天</n-button>
+                <n-button size="small" :type="timeMode === 'pending' ? 'primary' : 'default'" @click="setTimeMode('pending')">待定</n-button>
+                <n-button size="small" :type="timeMode === 'specified' ? 'primary' : 'default'" @click="setTimeMode('specified')">指定时间</n-button>
+              </n-space>
+              <n-space v-if="timeMode === 'specified'" align="center" :size="8">
                 <n-time-picker
                   v-model:value="startTime"
                   format="HH:mm"
                   clearable
                   placeholder="开始"
                   style="width: 90px"
+                  @update:value="handleStartTimeChange"
                 />
                 <n-text depth="3">~</n-text>
                 <n-time-picker
@@ -153,11 +157,8 @@
                   placeholder="结束"
                   style="width: 90px"
                 />
-              </template>
-              <n-text v-else depth="3">全天</n-text>
-              <n-divider vertical />
-              <n-switch v-model:value="form.is_all_day" size="small" />
-              <n-text depth="3" style="font-size: 12px; white-space: nowrap">全天</n-text>
+              </n-space>
+              <n-text v-else-if="timeMode === 'pending'" depth="3" style="font-size: 12px">时间尚未确定</n-text>
             </n-space>
           </n-form-item-gi>
         </n-grid>
@@ -245,6 +246,7 @@ const uploading = ref(false)
 // ── 时间选择器必须用独立 ref（Naive UI bug: n-time-picker 不能绑定 reactive 属性） ──
 const startTime = ref(null)
 const endTime = ref(null)
+const timeMode = ref('pending')
 
 const artistOptions = computed(() =>
   props.artists.map((a) => ({
@@ -254,6 +256,14 @@ const artistOptions = computed(() =>
 )
 
 const eventData = computed(() => props.editData || {})
+const detailTime = computed(() => {
+  const data = eventData.value
+  if (data.is_all_day) return '全天'
+  if (!data.start_time && !data.end_time) return '待定'
+  if (!data.end_time) return data.start_time || '待定'
+  return `${data.start_time || '--'} ~ ${data.end_time}`
+})
+
 
 // 详情模式：根据 artist_ids 查找艺人
 const detailArtists = computed(() => {
@@ -357,6 +367,23 @@ function timestampToTimeString(value) {
     .join(':')
 }
 
+function setTimeMode(mode) {
+  timeMode.value = mode
+  form.is_all_day = mode === 'allDay'
+  if (mode !== 'specified') {
+    startTime.value = null
+    endTime.value = null
+  }
+}
+
+function handleStartTimeChange(value) {
+  if (value === null || value === undefined) {
+    endTime.value = null
+    return
+  }
+  endTime.value = new Date(value).getTime() + 60 * 60 * 1000
+}
+
 // 加载已有数据到表单
 watch(
   () => props.editData,
@@ -383,6 +410,9 @@ watch(
     form.type = data.type || ''
     form.category = data.category || ''
     form.is_all_day = data.is_all_day || false
+    timeMode.value = data.is_all_day
+      ? 'allDay'
+      : (data.start_time || data.end_time ? 'specified' : 'pending')
     form.start_date = data.start_date || ''
     form.end_date = data.end_date || ''
     form.location = data.location || ''
@@ -403,6 +433,7 @@ function resetForm() {
   form.type = ''
   form.category = ''
   form.is_all_day = false
+  timeMode.value = 'pending'
   form.start_date = ''
   form.end_date = ''
   form.location = ''
@@ -438,9 +469,10 @@ async function handleSubmit() {
   try {
     const payload = {
       ...form,
-      start_time: form.is_all_day ? null : timestampToTimeString(startTime.value),
-      end_time: form.is_all_day ? null : timestampToTimeString(endTime.value),
-      end_date: form.is_all_day
+      is_all_day: timeMode.value === 'allDay',
+      start_time: timeMode.value === 'specified' ? timestampToTimeString(startTime.value) : null,
+      end_time: timeMode.value === 'specified' ? timestampToTimeString(endTime.value) : null,
+      end_date: timeMode.value === 'allDay'
         ? form.start_date
         : (form.end_date || form.start_date),
       // 兼容旧表：artist_id 取数组第一位
