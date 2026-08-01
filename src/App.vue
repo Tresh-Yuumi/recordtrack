@@ -1,201 +1,198 @@
 <template>
   <n-config-provider :locale="zhCN" :theme-overrides="themeOverrides">
-    <div class="app-wrapper">
-      <!-- ========== 顶部栏 ========== -->
+    <div v-if="accessMode === 'landing'" class="entry-page">
+      <section class="entry-card">
+        <div class="entry-icon">📅</div>
+        <h1>RecordTrack</h1>
+        <p>请选择访问方式</p>
+        <n-button size="large" block @click="enterViewer">
+          <span class="entry-button-text"><b>👀 查看行程</b><small>无需密码，仅浏览行程</small></span>
+        </n-button>
+        <n-button type="primary" size="large" block @click="showLogin = true">
+          <span class="entry-button-text"><b>🔐 管理行程</b><small>输入密码，可新增、编辑和删除</small></span>
+        </n-button>
+      </section>
+    </div>
+
+    <div v-else class="app-wrapper">
       <header class="app-header">
-        <div class="header-left">
-          <h1 class="app-title">📅 RecordTrack</h1>
-        </div>
-        <div class="header-right">
-          <n-space>
-            <n-button type="primary" size="small" @click="openCreate(new Date().toISOString().slice(0, 10))" @mouseenter="preloadEventModal">
-              <template #icon>➕</template> 新增行程
+        <h1 class="app-title">📅 RecordTrack</h1>
+        <div class="header-actions">
+          <n-tag size="small" :type="isAdmin ? 'success' : 'default'">
+            {{ isAdmin ? '管理模式' : '查看模式' }}
+          </n-tag>
+          <template v-if="isAdmin">
+            <n-button type="primary" size="small" @click="openCreate(todayLocal())" @mouseenter="preloadEventModal">
+              ➕ <span class="button-label">新增行程</span>
             </n-button>
-            <n-button size="small" @click="handleExport" :loading="loading">
-              <template #icon>📥</template> 导出备份
-            </n-button>
-            <n-upload
-              :show-file-list="false"
-              accept=".json"
-              :custom-request="handleImport"
-            >
-              <n-button size="small" :loading="loading">
-                <template #icon>📤</template> 导入备份
-              </n-button>
+            <n-button class="desktop-only" size="small" @click="handleExport" :loading="loading">📥 导出</n-button>
+            <n-upload class="desktop-only" :show-file-list="false" accept=".json" :custom-request="handleImport">
+              <n-button size="small" :loading="loading">📤 导入</n-button>
             </n-upload>
-          </n-space>
+            <n-button class="desktop-only" size="small" @click="handleLogout">退出管理</n-button>
+          </template>
+          <n-button v-else type="primary" size="small" @click="showLogin = true">🔐 管理</n-button>
         </div>
       </header>
 
-      <!-- ========== 筛选栏：艺人 + 视图切换 ========== -->
+      <section v-if="isAdmin" class="mobile-admin-tools">
+        <n-button size="small" @click="handleExport" :loading="loading">📥 导出备份</n-button>
+        <n-upload :show-file-list="false" accept=".json" :custom-request="handleImport">
+          <n-button size="small" :loading="loading">📤 导入备份</n-button>
+        </n-upload>
+        <n-button size="small" @click="handleLogout">退出管理</n-button>
+      </section>
+
       <section class="filter-bar">
         <div class="filter-row">
-          <n-space align="center">
-            <n-text depth="3" style="font-size: 13px">筛选艺人：</n-text>
+          <div class="artist-filters" aria-label="筛选艺人">
+            <n-tag :type="!activeFilter ? 'primary' : 'default'" size="small" class="filter-tag" @click="activeFilter = null">全部</n-tag>
             <n-tag
-              v-for="artist in artists"
-              :key="artist.id"
+              v-for="artist in artists" :key="artist.id" size="small" class="filter-tag"
               :type="activeFilter === artist.id ? 'primary' : 'default'"
               :bordered="activeFilter !== artist.id"
-              size="small"
-              :style="{
-                cursor: 'pointer',
-                opacity: activeFilter && activeFilter !== artist.id ? 0.3 : 1,
-                borderColor: activeFilter === artist.id ? '#000' : '#ccc',
-                color: activeFilter === artist.id ? '#fff' : '#333',
-                backgroundColor: activeFilter === artist.id ? '#000' : '#fff',
-              }"
+              :style="{ opacity: activeFilter && activeFilter !== artist.id ? 0.45 : 1 }"
               @click="toggleFilter(artist.id)"
-            >
-              {{ artist.emoji || '' }} {{ artist.name }}
-            </n-tag>
-            <n-divider vertical />
-            <n-tag
-              :type="!activeFilter ? 'primary' : 'default'"
-              size="small"
-              style="cursor: pointer"
-              @click="activeFilter = null"
-            >
-              全部
-            </n-tag>
-          </n-space>
-          <n-space>
-            <n-button
-              :type="viewMode === 'calendar' ? 'primary' : 'default'"
-              size="tiny"
-              @click="viewMode = 'calendar'"
-            >📅 日历</n-button>
-            <n-button
-              :type="viewMode === 'list' ? 'primary' : 'default'"
-              size="tiny"
-              @click="viewMode = 'list'"
-            >📋 列表</n-button>
+            >{{ artist.emoji || '' }} {{ artist.name }}</n-tag>
+          </div>
+          <n-space :size="6" class="view-switch">
+            <n-button :type="viewMode === 'calendar' ? 'primary' : 'default'" size="tiny" @click="viewMode = 'calendar'">📅 日历</n-button>
+            <n-button :type="viewMode === 'list' ? 'primary' : 'default'" size="tiny" @click="viewMode = 'list'">📋 列表</n-button>
           </n-space>
         </div>
       </section>
 
-      <!-- ========== 视图区域 ========== -->
       <main class="content-area" @mouseenter="preloadEventModal">
         <CalendarView
-          v-if="viewMode === 'calendar'"
-          :events="filteredEvents"
-          :artists="artists"
-          :loading="loading"
-          @date-click="openCreate"
-          @event-click="openDetail"
+          v-if="viewMode === 'calendar'" :events="filteredEvents" :artists="artists" :loading="loading"
+          @date-click="handleDateClick" @event-click="openDetail"
         />
-        <EventListView
-          v-else
-          :events="filteredEvents"
-          :artists="artists"
-          @event-click="openDetail"
-        />
+        <EventListView v-else :events="filteredEvents" :artists="artists" @event-click="openDetail" />
       </main>
 
-      <!-- ========== 事件弹窗 ========== -->
+      <button v-if="isAdmin" class="mobile-fab" aria-label="新增行程" @click="openCreate(todayLocal())">＋</button>
+
       <EventModal
-        :show="modalVisible"
-        :mode="modalMode"
-        :artists="artists"
-        :edit-data="selectedEvent"
-        @update:show="modalVisible = $event"
-        @mode-change="modalMode = $event"
-        @submit="handleSubmit"
-        @delete="handleDelete"
-        @upload="handleImageUpload"
+        :show="modalVisible" :mode="modalMode" :artists="artists" :edit-data="selectedEvent" :can-edit="isAdmin"
+        @update:show="modalVisible = $event" @mode-change="modalMode = $event"
+        @submit="handleSubmit" @delete="handleDelete" @upload="handleImageUpload"
       />
     </div>
+
+    <n-modal v-model:show="showLogin" preset="card" title="进入管理模式" class="login-modal" :mask-closable="false">
+      <n-input
+        v-model:value="adminPassword" type="password" show-password-on="mousedown"
+        placeholder="请输入管理密码" :disabled="loginLoading" @keyup.enter="handleLogin"
+      />
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="showLogin = false">取消</n-button>
+          <n-button type="primary" :loading="loginLoading" @click="handleLogin">进入管理模式</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </n-config-provider>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
-import {
-  NConfigProvider, NButton, NSpace, NTag, NDivider, NText, NUpload,
-  createDiscreteApi,
-} from 'naive-ui'
-import { zhCN } from 'naive-ui'
+import { NConfigProvider, NButton, NSpace, NTag, NUpload, NModal, NInput, createDiscreteApi, zhCN } from 'naive-ui'
 import CalendarView from './components/CalendarView.vue'
 import EventListView from './components/EventListView.vue'
 import { useCalendar } from './composables/useCalendar.js'
+import { getAdminSession, loginAdmin, logoutAdmin } from './lib/adminApi.js'
 
-// EventModal 懒加载：只在首次打开弹窗时下载
 const EventModal = defineAsyncComponent(() => import('./components/EventModal.vue'))
+const preloadEventModal = () => import('./components/EventModal.vue')
+const { message, dialog } = createDiscreteApi(['message', 'dialog'])
+const { loading, fetchArtists, addEvent, updateEvent, deleteEvent, fetchEvents, uploadImage, exportData, importData } = useCalendar()
 
-// hover 按钮时预加载，确保首次点击已就绪
-function preloadEventModal() {
-  import('./components/EventModal.vue')
-}
-
-const { message } = createDiscreteApi(['message'])
-
-const {
-  loading,
-  fetchArtists, addEvent, updateEvent, deleteEvent,
-  fetchEvents, uploadImage, exportData, importData,
-} = useCalendar()
-
-// ── 数据 ──
 const artists = ref([])
 const events = ref([])
 const activeFilter = ref(null)
-
-// ── 弹窗状态 ──
 const modalVisible = ref(false)
 const modalMode = ref('create')
 const selectedEvent = ref(null)
-const viewMode = ref('calendar')  // 'calendar' | 'list'
+const accessMode = ref('landing')
+const showLogin = ref(false)
+const adminPassword = ref('')
+const loginLoading = ref(false)
+const viewMode = ref(window.matchMedia('(max-width: 767px)').matches ? 'list' : 'calendar')
+const isAdmin = computed(() => accessMode.value === 'admin')
 
-// ── 筛选后的事件 ──
 const filteredEvents = computed(() => {
   if (!activeFilter.value) return events.value
-  return events.value.filter((e) => {
-    // 兼容新旧格式：artist_ids 数组 或 旧 artist_id 单值
-    const ids = e.artist_ids?.length ? e.artist_ids : (e.artist_id ? [e.artist_id] : [])
+  return events.value.filter((event) => {
+    const ids = event.artist_ids?.length ? event.artist_ids : (event.artist_id ? [event.artist_id] : [])
     return ids.includes(activeFilter.value)
   })
 })
 
-// ── 初始化 ──
 onMounted(async () => {
+  if (new URLSearchParams(location.search).get('mode') === 'view') accessMode.value = 'viewer'
   try {
-    const [artistData, eventData] = await Promise.all([
-      fetchArtists(),
-      fetchEvents(),
-    ])
-    artists.value = artistData
-    events.value = eventData
-  } catch (e) {
-    message.error('加载数据失败：' + e.message)
+    if (await getAdminSession()) accessMode.value = 'admin'
+  } catch {
+    // 本地纯 Vite 开发时 API 可能尚未启动，仍允许查看模式。
   }
+  await loadData()
 })
 
-// ── 筛选 ──
-function toggleFilter(artistId) {
-  activeFilter.value = activeFilter.value === artistId ? null : artistId
+async function loadData() {
+  try {
+    const [artistData, eventData] = await Promise.all([fetchArtists(), fetchEvents()])
+    artists.value = artistData
+    events.value = eventData
+  } catch (error) {
+    message.error('加载数据失败：' + error.message)
+  }
 }
 
-// ── 弹窗操作 ──
-function openCreate(dateStr) {
-  selectedEvent.value = {
-    start_date: dateStr,
-    end_date: dateStr,
-    is_all_day: false,
-    artist_ids: [],
-    image_urls: [],
-  }
+function enterViewer() { accessMode.value = 'viewer' }
+function todayLocal() {
+  const now = new Date()
+  const offset = now.getTimezoneOffset() * 60000
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10)
+}
+function toggleFilter(id) { activeFilter.value = activeFilter.value === id ? null : id }
+function handleDateClick(date) { if (isAdmin.value) openCreate(date) }
+
+function openCreate(date) {
+  if (!isAdmin.value) return
+  selectedEvent.value = { start_date: date, end_date: date, is_all_day: false, artist_ids: [], image_urls: [] }
   modalMode.value = 'create'
   modalVisible.value = true
 }
 
-function openDetail(calEvent) {
-  selectedEvent.value = calEvent.extendedProps
+function openDetail(event) {
+  selectedEvent.value = event.extendedProps || event
   modalMode.value = 'detail'
   modalVisible.value = true
 }
 
-// ── 提交 ──
+async function handleLogin() {
+  if (!adminPassword.value) return message.warning('请输入管理密码')
+  loginLoading.value = true
+  try {
+    await loginAdmin(adminPassword.value)
+    accessMode.value = 'admin'
+    showLogin.value = false
+    adminPassword.value = ''
+    message.success('已进入管理模式')
+  } catch (error) {
+    message.error(error.message)
+  } finally { loginLoading.value = false }
+}
+
+async function handleLogout() {
+  await logoutAdmin()
+  accessMode.value = 'viewer'
+  modalVisible.value = false
+  message.success('已退出管理模式')
+}
+
 async function handleSubmit(payload) {
+  if (!isAdmin.value) return
   try {
     if (modalMode.value === 'create') {
       await addEvent(payload)
@@ -206,113 +203,73 @@ async function handleSubmit(payload) {
     }
     modalVisible.value = false
     events.value = await fetchEvents()
-  } catch (e) {
-    message.error('操作失败：' + e.message)
+  } catch (error) {
+    if (error.status === 401) accessMode.value = 'viewer'
+    message.error('操作失败：' + error.message)
   }
 }
 
-// ── 删除 ──
-async function handleDelete(eventId) {
-  try {
-    await deleteEvent(eventId)
-    message.success('行程已删除')
-    modalVisible.value = false
-    events.value = await fetchEvents()
-  } catch (e) {
-    message.error('删除失败：' + e.message)
-  }
+function handleDelete(eventId) {
+  if (!isAdmin.value) return
+  dialog.warning({
+    title: '确认删除行程', content: `确定删除“${selectedEvent.value?.title || '该行程'}”吗？此操作无法撤销。`,
+    positiveText: '删除', negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteEvent(eventId)
+        modalVisible.value = false
+        events.value = await fetchEvents()
+        message.success('行程已删除')
+      } catch (error) { message.error('删除失败：' + error.message) }
+    },
+  })
 }
 
-// ── 图片上传 ──
 async function handleImageUpload(file, callback) {
-  try {
-    const url = await uploadImage(file)
-    callback(url)
-    message.success('图片上传成功')
-  } catch (e) {
-    message.error('图片上传失败：' + e.message)
-  }
+  try { callback(await uploadImage(file)); message.success('图片上传成功') }
+  catch (error) { message.error('图片上传失败：' + error.message) }
 }
-
-// ── 导入/导出 ──
 async function handleExport() {
-  try {
-    await exportData()
-    message.success('备份导出成功')
-  } catch (e) {
-    message.error('导出失败：' + e.message)
-  }
+  try { await exportData(); message.success('备份导出成功') }
+  catch (error) { message.error('导出失败：' + error.message) }
 }
-
 async function handleImport({ file }) {
   try {
     const result = await importData(file.file)
     message.success(`导入成功！${result.artistCount} 位艺人，${result.eventCount} 条行程`)
-    const [artistData, eventData] = await Promise.all([
-      fetchArtists(),
-      fetchEvents(),
-    ])
-    artists.value = artistData
-    events.value = eventData
-  } catch (e) {
-    message.error('导入失败：' + e.message)
-  }
+    await loadData()
+  } catch (error) { message.error('导入失败：' + error.message) }
 }
 
-// ── 主题 ──
-const themeOverrides = {
-  common: {
-    primaryColor: '#FF6B6B',
-    primaryColorHover: '#FF8787',
-  },
-}
+const themeOverrides = { common: { primaryColor: '#FF6B6B', primaryColorHover: '#FF8787' } }
 </script>
 
 <style>
-body {
-  margin: 0;
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
-  background: #f5f6fa;
-  color: #333;
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif; background: #f5f6fa; color: #333; }
+.entry-page { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: linear-gradient(145deg, #fff7f7, #f5f6fa); }
+.entry-card { width: min(100%, 380px); padding: clamp(28px, 8vw, 48px); background: #fff; border-radius: 20px; box-shadow: 0 12px 40px rgba(0,0,0,.08); text-align: center; }
+.entry-icon { font-size: 42px; }.entry-card h1 { margin: 8px 0 4px; }.entry-card p { color: #999; margin: 0 0 28px; }
+.entry-card .n-button { height: auto; min-height: 62px; margin-top: 12px; }
+.entry-button-text { display: flex; flex-direction: column; gap: 3px; }.entry-button-text small { font-weight: 400; opacity: .72; }
+.app-wrapper { max-width: 1200px; margin: 0 auto; padding: 16px clamp(10px, 3vw, 20px); min-height: 100vh; }
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.app-title { margin: 0; font-size: clamp(18px, 4vw, 24px); white-space: nowrap; }.header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.filter-bar, .content-area { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.filter-bar { margin-bottom: 16px; padding: 12px 16px; }.content-area { padding: clamp(8px, 2vw, 16px); }
+.filter-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.artist-filters { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 2px; }.artist-filters::-webkit-scrollbar { display: none; }
+.filter-tag { flex: 0 0 auto; cursor: pointer; min-height: 30px; align-items: center; }.view-switch { flex: 0 0 auto; }
+.mobile-admin-tools, .mobile-fab { display: none; }.login-modal { width: min(90vw, 420px); }
+@media (max-width: 767px) {
+  .app-wrapper { padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .app-header { position: sticky; top: 0; z-index: 20; background: rgba(245,246,250,.94); backdrop-filter: blur(10px); padding: 6px 0 8px; }
+  .button-label, .desktop-only { display: none !important; }.header-actions { gap: 6px; }
+  .mobile-admin-tools { display: flex; gap: 8px; overflow-x: auto; margin: -2px 0 10px; padding-bottom: 2px; scrollbar-width: none; }
+  .filter-bar { padding: 10px; margin-bottom: 10px; }.filter-row { flex-direction: column; align-items: stretch; gap: 9px; }
+  .artist-filters { margin-inline: -2px; }.view-switch { align-self: center; }
+  .content-area { border-radius: 8px; }.mobile-fab { display: grid; place-items: center; position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 30; width: 56px; height: 56px; border: 0; border-radius: 50%; background: #ff6b6b; color: #fff; font-size: 30px; box-shadow: 0 8px 24px rgba(255,107,107,.4); }
 }
-
-.app-wrapper {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 16px 20px;
-  min-height: 100vh;
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.app-title {
-  margin: 0;
-  font-size: 1.5em;
-  font-weight: 700;
-}
-
-.filter-bar {
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-
-.content-area {
-  background: #fff;
-  border-radius: 10px;
-  padding: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-
-.filter-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+@media (max-width: 360px) { .app-title { font-size: 17px; }.header-actions { gap: 4px; }.header-actions .n-tag { display: none; } }
+@media (max-height: 500px) and (orientation: landscape) { .app-header { position: static; }.app-wrapper { padding-bottom: 60px; } }
 </style>

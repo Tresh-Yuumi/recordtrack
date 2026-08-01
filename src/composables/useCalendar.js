@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { supabase, MY_USER_ID } from '../lib/supabase.js'
+import { adminRequest } from '../lib/adminApi.js'
 
 /* ================================================================
  *  useCalendar — 封装所有数据库操作、图片上传、JSON 导入导出
@@ -87,65 +88,33 @@ export function useCalendar() {
   }
 
   async function addEvent(event) {
-    const { data, error } = await supabase
-      .from('events')
-      .insert({ ...event, user_id: MY_USER_ID })
-      .select('*')
-      .single()
-    if (error) throw error
-    return data
+    return adminRequest('createEvent', event)
   }
 
   async function updateEvent(id, updates) {
-    const { data, error } = await supabase
-      .from('events')
-      .update(updates)
-      .eq('id', id)
-      .eq('user_id', MY_USER_ID)
-      .select('*')
-      .single()
-    if (error) throw error
-    return data
+    return adminRequest('updateEvent', { id, updates })
   }
 
   async function deleteEvent(id) {
-    const { error } = await supabase
-      .from('events')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', MY_USER_ID)
-    if (error) throw error
+    return adminRequest('deleteEvent', { id })
   }
 
   // ────────────────── 图片上传 ──────────────────
 
   async function uploadImage(file) {
     const fileExt = file.name.split('.').pop()
-    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`
-    const filePath = `public/${fileName}`
-
+    const signed = await adminRequest('createImageUpload', { extension: fileExt })
     const { error } = await supabase.storage
       .from('event-images')
-      .upload(filePath, file)
-
+      .uploadToSignedUrl(signed.path, signed.token, file)
     if (error) throw error
-
-    const { data } = supabase.storage
-      .from('event-images')
-      .getPublicUrl(filePath)
-
-    return data.publicUrl
+    return signed.publicUrl
   }
 
   async function removeImage(url) {
-    // 从完整 URL 中提取 bucket 中的路径
     const pathMatch = url.match(/event-images\/(.+)$/)
     if (!pathMatch) return
-    const filePath = pathMatch[1]
-    const { error } = await supabase.storage
-      .from('event-images')
-      .remove([filePath])
-    if (error) console.warn('删除图片失败:', error.message)
+    await adminRequest('deleteImage', { path: pathMatch[1] })
   }
 
   // ────────────────── JSON 导出 / 导入 ──────────────────
@@ -192,26 +161,10 @@ export function useCalendar() {
       throw new Error('备份文件缺少 events 或 artists 数据')
     }
 
-    // 导入艺人（upsert）
-    const artistsWithUser = data.artists.map((a) => ({ ...a, user_id: MY_USER_ID }))
-    const { error: artistErr } = await supabase
-      .from('artists')
-      .upsert(artistsWithUser, { onConflict: 'id' })
-
-    // 导入行程（upsert）
-    const eventsWithUser = data.events.map((e) => ({ ...e, user_id: MY_USER_ID }))
-    const { error: eventErr } = await supabase
-      .from('events')
-      .upsert(eventsWithUser, { onConflict: 'id' })
-
-    loading.value = false
-
-    if (artistErr) throw artistErr
-    if (eventErr) throw eventErr
-
-    return {
-      artistCount: artistsWithUser.length,
-      eventCount: eventsWithUser.length,
+    try {
+      return await adminRequest('importData', { backup: data })
+    } finally {
+      loading.value = false
     }
   }
 

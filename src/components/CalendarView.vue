@@ -111,4 +111,17 @@ watch(fcEvents, (newEvents) => {
 :deep(.fc .fc-button) {
   font-size: 0.85em;
 }
+
+@media (max-width: 600px) {
+  :deep(.fc) { font-size: 12px; }
+  :deep(.fc .fc-header-toolbar) { flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  :deep(.fc .fc-toolbar-chunk:nth-child(2)) { order: -1; width: 100%; text-align: center; }
+  :deep(.fc .fc-toolbar-title) { font-size: 1.08rem; }
+  :deep(.fc .fc-button) { padding: .35em .5em; }
+  :deep(.fc .fc-daygrid-day-number) { padding: 3px; }
+  :deep(.fc .fc-event-title) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 360px) {
+  :deep(.fc .fc-button) { font-size: .75em; }
+}
 </style>

@@ -56,8 +56,8 @@
       </div>
 
       <n-space justify="end" style="margin-top: 20px">
-        <n-button @click="handleDelete" type="error" ghost>删除</n-button>
-        <n-button @click="switchMode('edit')" type="primary">编辑</n-button>
+        <n-button v-if="canEdit" @click="handleDelete" type="error" ghost>删除</n-button>
+        <n-button v-if="canEdit" @click="switchMode('edit')" type="primary">编辑</n-button>
         <n-button @click="emit('update:show', false)">关闭</n-button>
       </n-space>
     </template>
@@ -93,7 +93,7 @@
         </n-form-item>
 
         <!-- 双列：类型 | 分类 -->
-        <n-grid :cols="2" :x-gap="16">
+        <n-grid class="form-grid" :cols="2" :x-gap="16">
           <n-form-item-gi label="行程类型" path="type">
             <n-space>
               <n-button
@@ -125,7 +125,7 @@
         </n-grid>
 
         <!-- 双列：日期 | 时间 -->
-        <n-grid :cols="2" :x-gap="16">
+        <n-grid class="form-grid" :cols="2" :x-gap="16">
           <n-form-item-gi label="日期" path="start_date">
             <n-date-picker
               v-model:formatted-value="dateRange"
@@ -163,7 +163,7 @@
         </n-grid>
 
         <!-- 双列：地点 | 备注 -->
-        <n-grid :cols="2" :x-gap="16">
+        <n-grid class="form-grid" :cols="2" :x-gap="16">
           <n-form-item-gi label="地点">
             <n-input v-model:value="form.location" placeholder="城市 / 场馆名" />
           </n-form-item-gi>
@@ -235,6 +235,7 @@ const props = defineProps({
   mode: { type: String, default: 'create' },
   artists: { type: Array, default: () => [] },
   editData: { type: Object, default: null },
+  canEdit: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:show', 'mode-change', 'submit', 'delete', 'upload'])
 const formRef = ref(null)
@@ -333,6 +334,29 @@ function getArtistIds(data) {
   return []
 }
 
+// Naive UI 的时间选择器使用毫秒时间戳，数据库 time 字段使用 HH:mm:ss。
+function timeStringToTimestamp(value) {
+  if (!value) return null
+  if (typeof value === 'number') return value
+  const [hours = 0, minutes = 0, seconds = 0] = String(value).split(':').map(Number)
+  const date = new Date(1970, 0, 1, hours, minutes, seconds)
+  return date.getTime()
+}
+
+function timestampToTimeString(value) {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/)
+    if (!match) return null
+    return `${match[1].padStart(2, '0')}:${match[2]}:${match[3] || '00'}`
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return [date.getHours(), date.getMinutes(), date.getSeconds()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join(':')
+}
+
 // 加载已有数据到表单
 watch(
   () => props.editData,
@@ -367,8 +391,8 @@ watch(
     dateRange.value = data.start_date && data.end_date
       ? [data.start_date, data.end_date]
       : null
-    startTime.value = data.start_time || null
-    endTime.value = data.end_time || null
+    startTime.value = timeStringToTimestamp(data.start_time)
+    endTime.value = timeStringToTimestamp(data.end_time)
   },
   { immediate: true }
 )
@@ -414,8 +438,8 @@ async function handleSubmit() {
   try {
     const payload = {
       ...form,
-      start_time: form.is_all_day ? null : (startTime.value || null),
-      end_time: form.is_all_day ? null : (endTime.value || null),
+      start_time: form.is_all_day ? null : timestampToTimeString(startTime.value),
+      end_time: form.is_all_day ? null : timestampToTimeString(endTime.value),
       end_date: form.is_all_day
         ? form.start_date
         : (form.end_date || form.start_date),
@@ -438,3 +462,12 @@ function handleClose() {
   }
 }
 </script>
+
+<style scoped>
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  :deep(.n-card__content) { padding: 14px !important; overflow-y: auto; }
+  :deep(.n-card-header) { padding: 14px !important; }
+  :deep(.n-date-picker), :deep(.n-time-picker) { width: 100% !important; }
+}
+</style>
