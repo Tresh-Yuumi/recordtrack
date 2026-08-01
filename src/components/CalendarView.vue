@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, computed, watch } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -86,14 +86,17 @@ const calendarOptions = shallowRef({
   },
 })
 
-// 通过 FullCalendar 原生 API 更新事件，不替换整个 options
-watch(fcEvents, (newEvents) => {
+// 首次挂载和后续数据变化时，都通过 FullCalendar 原生 API 同步事件。
+function syncEvents(newEvents) {
   const api = calendarRef.value?.getApi()
-  if (api) {
-    api.removeAllEvents()
-    newEvents.forEach((e) => api.addEvent(e))
-  }
-})
+  if (!api) return
+  api.removeAllEvents()
+  newEvents.forEach((event) => api.addEvent(event))
+}
+
+onMounted(() => syncEvents(fcEvents.value))
+
+watch(fcEvents, syncEvents, { flush: 'post' })
 </script>
 
 <style scoped>
