@@ -131,6 +131,41 @@ const adminPassword = ref('')
 const loginLoading = ref(false)
 const viewMode = ref(window.matchMedia('(max-width: 767px)').matches ? 'list' : 'calendar')
 const isAdmin = computed(() => accessMode.value === 'admin')
+const ADMIN_SESSION_CACHE_KEY = 'record-track-admin-session'
+const ADMIN_SESSION_CACHE_TTL = 5 * 60 * 1000
+
+function readAdminSessionCache() {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(ADMIN_SESSION_CACHE_KEY) || 'null')
+    if (!cached || Date.now() - cached.checkedAt > ADMIN_SESSION_CACHE_TTL) return null
+    return Boolean(cached.isAdmin)
+  } catch {
+    return null
+  }
+}
+
+function writeAdminSessionCache(isAdmin) {
+  try {
+    sessionStorage.setItem(ADMIN_SESSION_CACHE_KEY, JSON.stringify({
+      isAdmin: Boolean(isAdmin),
+      checkedAt: Date.now(),
+    }))
+  } catch {
+    // 浏览器禁用会话存储时不影响正常使用。
+  }
+}
+
+async function restoreAdminSession() {
+  const cached = readAdminSessionCache()
+  if (cached !== null) {
+    if (cached) accessMode.value = 'admin'
+    return
+  }
+  const admin = await getAdminSession({ timeoutMs: 2500 })
+  writeAdminSessionCache(admin)
+  if (admin) accessMode.value = 'admin'
+}
+
 
 const filteredEvents = computed(() => {
   if (!activeFilter.value) return events.value
@@ -142,12 +177,10 @@ const filteredEvents = computed(() => {
 
 onMounted(async () => {
   if (new URLSearchParams(location.search).get('mode') === 'view') accessMode.value = 'viewer'
-  try {
-    if (await getAdminSession()) accessMode.value = 'admin'
-  } catch {
-    // 本地纯 Vite 开发时 API 可能尚未启动，仍允许查看模式。
-  }
-  await loadData()
+  await Promise.allSettled([
+    loadData(),
+    restoreAdminSession(),
+  ])
 })
 
 async function loadData() {
@@ -187,6 +220,7 @@ async function handleLogin() {
   loginLoading.value = true
   try {
     await loginAdmin(adminPassword.value)
+    writeAdminSessionCache(true)
     accessMode.value = 'admin'
     showLogin.value = false
     adminPassword.value = ''
@@ -197,6 +231,7 @@ async function handleLogin() {
 }
 
 async function handleLogout() {
+  writeAdminSessionCache(false)
   await logoutAdmin()
   accessMode.value = 'viewer'
   modalVisible.value = false

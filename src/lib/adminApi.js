@@ -14,8 +14,18 @@ export async function adminRequest(action, payload = {}) {
   return result.data
 }
 
-export async function getAdminSession() {
-  const response = await fetch('/api/session', { credentials: 'same-origin' })
+export async function getAdminSession({ timeoutMs = 2500 } = {}) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  let response
+  try {
+    response = await fetch('/api/session', {
+      credentials: 'same-origin',
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
   if (!response.ok) return false
   return Boolean((await response.json()).isAdmin)
 }
