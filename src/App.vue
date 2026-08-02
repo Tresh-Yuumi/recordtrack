@@ -22,28 +22,17 @@
             {{ isAdmin ? '管理模式' : '查看模式' }}
           </n-tag>
           <template v-if="isAdmin">
-            <n-button type="primary" size="small" @click="openCreate(todayLocal())" @mouseenter="preloadEventModal">
+            <n-button class="desktop-only" type="primary" size="small" @click="openCreate(todayLocal())" @mouseenter="preloadEventModal">
               ➕ <span class="button-label">新增行程</span>
             </n-button>
             <n-button class="desktop-only" size="small" @click="quickEntryVisible = true">⚡ 快速录入</n-button>
-            <n-button class="desktop-only" size="small" @click="handleExport" :loading="loading">📥 导出</n-button>
-            <n-upload class="desktop-only" :show-file-list="false" accept=".json" :custom-request="handleImport">
-              <n-button size="small" :loading="loading">📤 导入</n-button>
-            </n-upload>
             <n-button class="desktop-only" size="small" @click="handleLogout">退出管理</n-button>
+            <n-button class="mobile-only" size="small" @click="handleLogout">退出</n-button>
           </template>
           <n-button v-else type="primary" size="small" @click="showLogin = true">🔐 管理</n-button>
         </div>
       </header>
 
-      <section v-if="isAdmin" class="mobile-admin-tools">
-        <n-button size="small" @click="quickEntryVisible = true">⚡ 快速录入</n-button>
-        <n-button size="small" @click="handleExport" :loading="loading">📥 导出备份</n-button>
-        <n-upload :show-file-list="false" accept=".json" :custom-request="handleImport">
-          <n-button size="small" :loading="loading">📤 导入备份</n-button>
-        </n-upload>
-        <n-button size="small" @click="handleLogout">退出管理</n-button>
-      </section>
 
       <section class="filter-bar">
         <div class="filter-row">
@@ -72,7 +61,20 @@
         <EventListView v-else :events="filteredEvents" :artists="artists" @event-click="openDetail" />
       </main>
 
-      <button v-if="isAdmin" class="mobile-fab" aria-label="新增行程" @click="openCreate(todayLocal())">＋</button>
+      <section v-if="isAdmin" class="data-management">
+        <n-text class="data-management-title" depth="3">数据管理</n-text>
+        <n-space :size="8">
+          <n-button size="small" @click="handleExport" :loading="loading">📥 导出备份</n-button>
+          <n-upload :show-file-list="false" accept=".json" :custom-request="handleImport">
+            <n-button size="small" :loading="loading">📤 导入备份</n-button>
+          </n-upload>
+        </n-space>
+      </section>
+
+      <div v-if="isAdmin && !modalVisible && !quickEntryVisible" class="mobile-fab-group">
+        <button class="mobile-fab mobile-fab-quick" aria-label="快速录入" @click="quickEntryVisible = true">⚡</button>
+        <button class="mobile-fab mobile-fab-add" aria-label="新增行程" @click="openCreate(todayLocal())">＋</button>
+      </div>
 
       <EventModal
         :show="modalVisible" :mode="modalMode" :artists="artists" :edit-data="selectedEvent" :can-edit="isAdmin"
@@ -289,15 +291,22 @@ body { margin: 0; font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue
 .filter-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .artist-filters { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 2px; }.artist-filters::-webkit-scrollbar { display: none; }
 .filter-tag { flex: 0 0 auto; cursor: pointer; min-height: 30px; align-items: center; }.view-switch { flex: 0 0 auto; }
-.mobile-admin-tools, .mobile-fab { display: none; }.login-modal { width: min(90vw, 420px); }
+.mobile-only, .mobile-fab-group { display: none; }.login-modal { width: min(90vw, 420px); }
+.data-management { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 12px 16px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.data-management-title { flex: 0 0 auto; font-size: 13px; }
 @media (max-width: 767px) {
   .app-wrapper { padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   .app-header { position: sticky; top: 0; z-index: 20; background: rgba(245,246,250,.94); backdrop-filter: blur(10px); padding: 6px 0 8px; }
   .button-label, .desktop-only { display: none !important; }.header-actions { gap: 6px; }
-  .mobile-admin-tools { display: flex; gap: 8px; overflow-x: auto; margin: -2px 0 10px; padding-bottom: 2px; scrollbar-width: none; }
+  .mobile-only { display: inline-flex; }
   .filter-bar { padding: 10px; margin-bottom: 10px; }.filter-row { flex-direction: column; align-items: stretch; gap: 9px; }
   .artist-filters { margin-inline: -2px; }.view-switch { align-self: center; }
-  .content-area { border-radius: 8px; }.mobile-fab { display: grid; place-items: center; position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 30; width: 56px; height: 56px; border: 0; border-radius: 50%; background: #ff6b6b; color: #fff; font-size: 30px; box-shadow: 0 8px 24px rgba(255,107,107,.4); }
+  .content-area { border-radius: 8px; }
+  .data-management { align-items: flex-start; flex-direction: column; padding: 10px 12px; }
+  .mobile-fab-group { display: flex; align-items: center; gap: 10px; position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 30; }
+  .mobile-fab { display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; }
+  .mobile-fab-quick { width: 48px; height: 48px; background: #fff; color: #ff6b6b; font-size: 21px; box-shadow: 0 6px 20px rgba(0,0,0,.16); }
+  .mobile-fab-add { width: 56px; height: 56px; background: #ff6b6b; color: #fff; font-size: 30px; box-shadow: 0 8px 24px rgba(255,107,107,.4); }
 }
 @media (max-width: 360px) { .app-title { font-size: 17px; }.header-actions { gap: 4px; }.header-actions .n-tag { display: none; } }
 @media (max-height: 500px) and (orientation: landscape) { .app-header { position: static; }.app-wrapper { padding-bottom: 60px; } }
