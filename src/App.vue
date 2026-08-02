@@ -25,6 +25,7 @@
             <n-button type="primary" size="small" @click="openCreate(todayLocal())" @mouseenter="preloadEventModal">
               ➕ <span class="button-label">新增行程</span>
             </n-button>
+            <n-button class="desktop-only" size="small" @click="quickEntryVisible = true">⚡ 快速录入</n-button>
             <n-button class="desktop-only" size="small" @click="handleExport" :loading="loading">📥 导出</n-button>
             <n-upload class="desktop-only" :show-file-list="false" accept=".json" :custom-request="handleImport">
               <n-button size="small" :loading="loading">📤 导入</n-button>
@@ -36,6 +37,7 @@
       </header>
 
       <section v-if="isAdmin" class="mobile-admin-tools">
+        <n-button size="small" @click="quickEntryVisible = true">⚡ 快速录入</n-button>
         <n-button size="small" @click="handleExport" :loading="loading">📥 导出备份</n-button>
         <n-upload :show-file-list="false" accept=".json" :custom-request="handleImport">
           <n-button size="small" :loading="loading">📤 导入备份</n-button>
@@ -77,6 +79,12 @@
         @update:show="modalVisible = $event" @mode-change="modalMode = $event"
         @submit="handleSubmit" @delete="handleDelete" @upload="handleImageUpload"
       />
+
+      <QuickEntryModal
+        :show="quickEntryVisible" :artists="artists" :events="events"
+        @update:show="quickEntryVisible = $event" @submit="handleQuickEntrySubmit"
+      />
+
     </div>
 
     <n-modal v-model:show="showLogin" preset="card" title="进入管理模式" class="login-modal" :mask-closable="false">
@@ -104,6 +112,7 @@ import { getAdminSession, loginAdmin, logoutAdmin } from './lib/adminApi.js'
 
 const EventModal = defineAsyncComponent(() => import('./components/EventModal.vue'))
 const preloadEventModal = () => import('./components/EventModal.vue')
+const QuickEntryModal = defineAsyncComponent(() => import('./components/QuickEntryModal.vue'))
 const { message, dialog } = createDiscreteApi(['message', 'dialog'])
 const { loading, fetchArtists, addEvent, updateEvent, deleteEvent, fetchEvents, uploadImage, exportData, importData } = useCalendar()
 
@@ -114,6 +123,7 @@ const modalVisible = ref(false)
 const modalMode = ref('create')
 const selectedEvent = ref(null)
 const accessMode = ref('landing')
+const quickEntryVisible = ref(false)
 const showLogin = ref(false)
 const adminPassword = ref('')
 const loginLoading = ref(false)
@@ -209,6 +219,25 @@ async function handleSubmit(payload) {
   }
 }
 
+
+async function handleQuickEntrySubmit(payloads, done) {
+  if (!isAdmin.value) return done(false)
+  let created = 0
+  try {
+    for (const payload of payloads) {
+      await addEvent(payload)
+      created += 1
+    }
+    events.value = await fetchEvents()
+    message.success(`成功创建 ${created} 条行程`)
+    done(true)
+  } catch (error) {
+    events.value = await fetchEvents()
+    if (error.status === 401) accessMode.value = 'viewer'
+    message.error(`已创建 ${created} 条，后续保存失败：${error.message}`)
+    done(false)
+  }
+}
 function handleDelete(eventId) {
   if (!isAdmin.value) return
   dialog.warning({
