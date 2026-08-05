@@ -8,6 +8,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          'vue': ['vue'],
           'naive-ui': ['naive-ui'],
           'fullcalendar': [
             '@fullcalendar/core',
