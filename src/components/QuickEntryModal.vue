@@ -5,7 +5,7 @@
   >
     <template v-if="!items.length">
       <n-alert type="info" :bordered="false" style="margin-bottom: 14px">
-        每行填写一条行程。系统只按规则识别，不确定的字段会要求你手动补充，保存前不会写入数据库。
+        可粘贴任意格式的行程文字。AI会自动判断行程数量并提取信息，保存前不会写入数据库。
       </n-alert>
       <n-form label-placement="top">
         <n-form-item label="默认年份">
@@ -20,7 +20,8 @@
       </n-form>
       <n-space justify="end">
         <n-button @click="emit('update:show', false)">取消</n-button>
-        <n-button type="primary" :disabled="!sourceText.trim()" @click="handleParse">开始识别</n-button>
+        <n-button :disabled="!sourceText.trim() || parsing" @click="handleRuleParse">规则识别</n-button>
+        <n-button type="primary" :loading="parsing" :disabled="!sourceText.trim()" @click="handleParse">AI识别</n-button>
       </n-space>
     </template>
 
@@ -28,9 +29,13 @@
       <div class="parse-summary">
         <n-tag type="success">识别 {{ items.length }} 条</n-tag>
         <n-tag v-if="missingCount" type="error">{{ missingCount }} 条需要补充</n-tag>
+        <n-tag type="info">{{ parseMethod === 'ai' ? 'AI识别' : '规则识别' }}</n-tag>
         <n-tag v-if="duplicateCount" type="warning">{{ duplicateCount }} 条可能重复</n-tag>
       </div>
 
+      <n-alert v-if="parseNotice" type="warning" :bordered="false" style="margin-bottom: 12px">
+        {{ parseNotice }}
+      </n-alert>
       <div class="result-list">
         <section v-for="(item, index) in items" :key="item.key" class="result-card">
           <div class="result-heading">
@@ -39,6 +44,9 @@
           </div>
 
           <n-alert v-if="item.invalid_date" type="error" style="margin-bottom: 10px">输入中的日期无效，请重新选择。</n-alert>
+          <n-alert v-if="item.uncertain_fields?.length" type="warning" style="margin-bottom: 10px">
+            AI建议核对：{{ item.uncertain_fields.join('、') }}
+          </n-alert>
           <n-alert v-if="item.duplicate" type="warning" style="margin-bottom: 10px">
             {{ item.duplicate.level === 'high' ? '高度疑似重复' : '可能重复' }}：已有“{{ item.duplicate.event.title }}”
             （{{ item.duplicate.event.start_date }}，评分 {{ item.duplicate.score }}）
@@ -111,6 +119,7 @@ import {
 } from 'naive-ui'
 import { EVENT_TYPES, EVENT_CATEGORIES } from '../config/eventTypes.js'
 import { parseQuickEntry, getMissingFields } from '../lib/quickEntryParser.js'
+import { parseQuickEntryWithAI } from '../lib/aiQuickEntryParser.js'
 import { findDuplicateCandidate } from '../lib/duplicateDetector.js'
 
 const props = defineProps({
@@ -126,6 +135,9 @@ const items = ref([])
 const saving = ref(false)
 
 const artistOptions = computed(() => props.artists.map((artist) => ({ label: `${artist.emoji || ''} ${artist.name}`, value: artist.id })))
+const parsing = ref(false)
+const parseMethod = ref('ai')
+const parseNotice = ref('')
 const typeOptions = EVENT_TYPES.map((value) => ({ label: value, value }))
 const categoryOptions = EVENT_CATEGORIES.map((value) => ({ label: value, value }))
 const timeModeOptions = [
@@ -146,12 +158,44 @@ watch(() => props.show, (show) => {
     sourceText.value = ''
     items.value = []
     saving.value = false
+    parsing.value = false
+    parseMethod.value = 'ai'
+    parseNotice.value = ''
   }
 })
 
-function handleParse() {
-  items.value = parseQuickEntry(sourceText.value, { artists: props.artists, defaultYear: defaultYear.value })
+function applyParsedItems(parsedItems, method) {
+  items.value = parsedItems
+  parseMethod.value = method
   refreshAll()
+}
+
+function handleRuleParse() {
+  parseNotice.value = ''
+  applyParsedItems(
+    parseQuickEntry(sourceText.value, { artists: props.artists, defaultYear: defaultYear.value }),
+    'rules',
+  )
+}
+
+async function handleParse() {
+  parsing.value = true
+  parseNotice.value = ''
+  try {
+    const parsed = await parseQuickEntryWithAI(sourceText.value, {
+      artists: props.artists,
+      defaultYear: defaultYear.value,
+    })
+    applyParsedItems(parsed, 'ai')
+  } catch (error) {
+    applyParsedItems(
+      parseQuickEntry(sourceText.value, { artists: props.artists, defaultYear: defaultYear.value }),
+      'rules',
+    )
+    parseNotice.value = `AI识别暂不可用，已自动使用规则识别：${error.message}`
+  } finally {
+    parsing.value = false
+  }
 }
 
 function handleTimeMode(item) {

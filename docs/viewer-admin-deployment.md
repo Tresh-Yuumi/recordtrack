@@ -9,6 +9,8 @@
 - `APP_USER_ID`：当前 RecordTrack 固定用户 UUID。
 - `ADMIN_PASSWORD`：进入管理模式的密码。
 - `ADMIN_SESSION_SECRET`：用于签署管理会话，建议使用至少 32 字节随机字符串。
+- `DEEPSEEK_API_KEY`：DeepSeek API Key，仅用于服务端快速录入解析。
+- `DEEPSEEK_MODEL`：填写 `deepseek-v4-flash`，使用低延迟模型。
 
 这些变量不要添加 `VITE_` 前缀，也不要提交真实值到 Git。
 
