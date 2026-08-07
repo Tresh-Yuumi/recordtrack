@@ -41,15 +41,32 @@ function formatEventForCalendar(dbEvent) {
 
   return {
     id: dbEvent.id,
-    title: `${artistIcons}${dbEvent.title}`,
+    title: dbEvent.title,
     start: startStr,
     end: endStr,
     allDay: dbEvent.is_all_day,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
     borderColor: '#000',
-    textColor: '#fff',
-    extendedProps: { ...dbEvent },
+    textColor: '#000',
+    extendedProps: { ...dbEvent, artistIcons },
   }
+}
+
+function renderEventContent(arg) {
+  const content = document.createElement('div')
+  content.className = 'calendar-event-content'
+
+  const icons = document.createElement('span')
+  icons.className = 'calendar-event-icons'
+  icons.textContent = arg.event.extendedProps.artistIcons || ''
+
+  const title = document.createElement('span')
+  title.className = 'calendar-event-title'
+  title.textContent = arg.event.title
+
+  if (icons.textContent) content.append(icons)
+  content.append(title)
+  return { domNodes: [content] }
 }
 
 const fcEvents = computed(() => props.events.map(formatEventForCalendar))
@@ -78,6 +95,7 @@ const calendarOptions = shallowRef({
   height: 'auto',
   eventDisplay: 'block',
   displayEventTime: false,
+  eventContent: renderEventContent,
   dateClick: (arg) => {
     emit('dateClick', arg.dateStr)
   },
@@ -114,6 +132,33 @@ watch(fcEvents, syncEvents, { flush: 'post' })
 :deep(.fc .fc-button) {
   font-size: 0.85em;
 }
+:deep(.fc .fc-event) {
+  border-width: .5px;
+  padding: 1px 3px;
+}
+:deep(.fc .calendar-event-content) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-height: 2.4em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 11px;
+  line-height: 1.2;
+}
+:deep(.fc .calendar-event-icons) {
+  margin-right: 2px;
+  font-size: 8px;
+  white-space: nowrap;
+}
+:deep(.fc .calendar-event-title) {
+  font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue Condensed', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-stretch: condensed;
+  font-weight: 500;
+  letter-spacing: -.2px;
+}
 
 @media (max-width: 600px) {
   :deep(.fc) { font-size: 12px; }
@@ -122,9 +167,14 @@ watch(fcEvents, syncEvents, { flush: 'post' })
   :deep(.fc .fc-toolbar-title) { font-size: 1.08rem; }
   :deep(.fc .fc-button) { padding: .35em .5em; }
   :deep(.fc .fc-daygrid-day-number) { padding: 3px; }
-  :deep(.fc .fc-event-title) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :deep(.fc .fc-event) { margin-top: 1px; padding: 1px 2px; }
+  :deep(.fc .calendar-event-content) { max-height: 2.3em; font-size: 9.5px; line-height: 1.15; }
+  :deep(.fc .calendar-event-icons) { margin-right: 1px; font-size: 7.5px; }
+  :deep(.fc .calendar-event-title) { letter-spacing: -.25px; }
 }
 @media (max-width: 360px) {
   :deep(.fc .fc-button) { font-size: .75em; }
+  :deep(.fc .calendar-event-content) { font-size: 9px; }
+  :deep(.fc .calendar-event-icons) { font-size: 7px; }
 }
 </style>
