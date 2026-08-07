@@ -104,8 +104,8 @@ function formatTime(event) {
   padding: 16px 4px 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #999;
-  border-bottom: 1px solid #eee;
+  color: #737373;
+  border-bottom: 1px solid #e5e5e5;
   margin-bottom: 4px;
 }
 .month-divider:first-child {
@@ -120,10 +120,10 @@ function formatTime(event) {
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid #eeeeee;
 }
 .event-card:hover {
-  background: #f8f8f8;
+  background: #f5f5f5;
 }
 .event-card:last-child {
   border-bottom: none;
@@ -139,11 +139,11 @@ function formatTime(event) {
 .date-day {
   font-size: 18px;
   font-weight: 700;
-  color: #333;
+  color: #262626;
 }
 .date-week {
   font-size: 11px;
-  color: #999;
+  color: #737373;
 }
 
 .card-artists {
@@ -159,7 +159,7 @@ function formatTime(event) {
 .card-title {
   flex: 1;
   font-size: 14px;
-  color: #333;
+  color: #262626;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -167,7 +167,7 @@ function formatTime(event) {
 
 .card-time {
   font-size: 12px;
-  color: #999;
+  color: #737373;
   white-space: nowrap;
   min-width: 60px;
   text-align: right;

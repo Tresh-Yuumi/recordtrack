@@ -45,9 +45,9 @@ function formatEventForCalendar(dbEvent) {
     start: startStr,
     end: endStr,
     allDay: dbEvent.is_all_day,
-    backgroundColor: '#fff',
-    borderColor: '#000',
-    textColor: '#000',
+    backgroundColor: '#737373',
+    borderColor: '#525252',
+    textColor: '#fff',
     extendedProps: { ...dbEvent, artistIcons },
   }
 }
@@ -125,6 +125,14 @@ watch(fcEvents, syncEvents, { flush: 'post' })
 
 :deep(.fc) {
   font-size: 14px;
+  --fc-button-bg-color: #262626;
+  --fc-button-border-color: #262626;
+  --fc-button-hover-bg-color: #404040;
+  --fc-button-hover-border-color: #404040;
+  --fc-button-active-bg-color: #525252;
+  --fc-button-active-border-color: #525252;
+  --fc-today-bg-color: rgba(115, 115, 115, .10);
+  --fc-border-color: #d4d4d4;
 }
 :deep(.fc .fc-toolbar-title) {
   font-size: 1.2em;

@@ -42,7 +42,7 @@ onMounted(() => {
 
 <style>
 * { box-sizing: border-box; }
-body { margin: 0; font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif; background: #f5f6fa; color: #222; }
+body { margin: 0; font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif; background: #f5f5f5; color: #262626; }
 .loading-shell { min-height: 100vh; display: grid; place-items: center; color: #888; }
 .entry-shell { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
 .entry-card { width: min(92vw, 400px); padding: 28px; background: #fff; border-radius: 16px; box-shadow: 0 10px 35px rgba(0,0,0,.08); text-align: center; }
@@ -52,6 +52,6 @@ body { margin: 0; font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-ser
 .entry-button span, .entry-button small { display: block; }
 .entry-button span { font-size: 16px; font-weight: 600; }
 .entry-button small { margin-top: 3px; color: #888; }
-.entry-button-primary { border-color: #ff6b6b; background: #ff6b6b; color: #fff; }
+.entry-button-primary { border-color: #262626; background: #262626; color: #fff; }
 .entry-button-primary small { color: rgba(255,255,255,.82); }
 </style>

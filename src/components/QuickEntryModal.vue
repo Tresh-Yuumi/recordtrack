@@ -259,10 +259,10 @@ function handleSave() {
 .quick-entry-modal { width: min(94vw, 900px); max-height: 92dvh; }
 .parse-summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .result-list { max-height: 65dvh; overflow-y: auto; padding-right: 4px; }
-.result-card { padding: 14px; margin-bottom: 12px; border: 1px solid #e8e8e8; border-radius: 10px; background: #fafafa; }
+.result-card { padding: 14px; margin-bottom: 12px; border: 1px solid #d4d4d4; border-radius: 10px; background: #fafafa; }
 .result-heading { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
 .original-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-.quick-actions { display: flex; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid #eee; }
+.quick-actions { display: flex; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid #e5e5e5; }
 @media (max-width: 600px) {
   .quick-entry-modal { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
   .quick-grid { grid-template-columns: minmax(0, 1fr) !important; }
