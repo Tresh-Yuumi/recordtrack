@@ -211,7 +211,7 @@ function handleDateClick(date) { if (isAdmin.value) openCreate(date) }
 
 function openCreate(date) {
   if (!isAdmin.value) return
-  selectedEvent.value = { start_date: date, end_date: date, is_all_day: false, artist_ids: [], image_urls: [] }
+  selectedEvent.value = { start_date: date, end_date: date, is_all_day: false, artist_ids: [], hashtags: [], image_urls: [] }
   modalMode.value = 'create'
   modalVisible.value = true
 }

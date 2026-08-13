@@ -36,6 +36,17 @@
         <n-descriptions-item label="时间">{{ detailTime }}</n-descriptions-item>
         <n-descriptions-item label="地点" :span="2">{{ eventData.location || '--' }}</n-descriptions-item>
         <n-descriptions-item label="备注" :span="2">{{ eventData.notes || '--' }}</n-descriptions-item>
+        <n-descriptions-item v-if="eventData.hashtags?.length" label="Hashtag" :span="2">
+          <div class="hashtag-detail">
+            <n-space :size="6" align="center">
+              <span v-for="tag in eventData.hashtags" :key="tag" class="hashtag-item">
+                <n-tag size="small">#{{ tag }}</n-tag>
+                <n-button quaternary size="tiny" @click="copyHashtags([tag])">复制</n-button>
+              </span>
+              <n-button size="tiny" @click="copyHashtags(eventData.hashtags)">复制全部</n-button>
+            </n-space>
+          </div>
+        </n-descriptions-item>
       </n-descriptions>
 
       <div v-if="eventData.image_urls?.length" style="margin-top: 16px">
@@ -178,6 +189,33 @@
           </n-form-item-gi>
         </n-grid>
 
+        <!-- 活动 Hashtag -->
+        <n-form-item label="活动 Hashtag（选填）">
+          <div class="hashtag-editor">
+            <n-space v-if="form.hashtags.length" :size="6">
+              <n-tag
+                v-for="tag in form.hashtags"
+                :key="tag"
+                closable
+                @close="removeHashtag(tag)"
+              >#{{ tag }}</n-tag>
+            </n-space>
+            <n-space :wrap="false" class="hashtag-input-row">
+              <n-input
+                v-model:value="hashtagInput"
+                type="textarea"
+                :autosize="{ minRows: 1, maxRows: 3 }"
+                placeholder="输入 Hashtag，按回车添加"
+                maxlength="1000"
+                @keydown.enter.prevent="addHashtags"
+                @blur="addHashtags"
+              />
+              <n-button @mousedown.prevent @click="addHashtags">添加</n-button>
+            </n-space>
+            <n-text depth="3" class="hashtag-hint">可用空格、逗号或换行分隔，最多 10 个</n-text>
+          </div>
+        </n-form-item>
+
         <!-- 图片上传 -->
         <n-form-item label="相关图片">
           <n-space v-if="form.image_urls.length" style="margin-bottom: 8px">
@@ -242,6 +280,7 @@ const emit = defineEmits(['update:show', 'mode-change', 'submit', 'delete', 'upl
 const formRef = ref(null)
 const submitting = ref(false)
 const uploading = ref(false)
+const hashtagInput = ref('')
 
 // ── 时间选择器必须用独立 ref（Naive UI bug: n-time-picker 不能绑定 reactive 属性） ──
 const startTime = ref(null)
@@ -281,6 +320,7 @@ const form = reactive({
   end_date: '',
   location: '',
   notes: '',
+  hashtags: [],
   image_urls: [],
 })
 
@@ -332,6 +372,43 @@ function toggleArtist(id) {
   } else {
     form.artist_ids.push(id)
   }
+}
+
+function normalizeHashtags(value) {
+  const source = Array.isArray(value) ? value : String(value || '').split(/[\s,，]+/u)
+  return [...new Set(source
+    .map((tag) => String(tag).trim().replace(/^#+/, '').replace(/[^\p{L}\p{M}\p{N}_]/gu, ''))
+    .filter(Boolean))]
+}
+
+function addHashtags() {
+  if (!hashtagInput.value.trim()) return
+  const combined = normalizeHashtags([...form.hashtags, ...hashtagInput.value.split(/[\s,，]+/u)])
+  if (combined.length > 10) message.warning('每条活动最多添加 10 个 Hashtag')
+  form.hashtags = combined.slice(0, 10)
+  hashtagInput.value = ''
+}
+
+function removeHashtag(tag) {
+  form.hashtags = form.hashtags.filter((item) => item !== tag)
+}
+
+async function copyHashtags(tags) {
+  const text = normalizeHashtags(tags).map((tag) => `#${tag}`).join(' ')
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    textarea.remove()
+  }
+  message.success('已复制')
 }
 
 // 兼容新旧数据：从 editData 中提取艺人 ID 列表
@@ -417,6 +494,7 @@ watch(
     form.end_date = data.end_date || ''
     form.location = data.location || ''
     form.notes = data.notes || ''
+    form.hashtags = normalizeHashtags(data.hashtags || [])
     form.image_urls = [...(data.image_urls || [])]
     dateRange.value = data.start_date && data.end_date
       ? [data.start_date, data.end_date]
@@ -438,7 +516,9 @@ function resetForm() {
   form.end_date = ''
   form.location = ''
   form.notes = ''
+  form.hashtags = []
   form.image_urls = []
+  hashtagInput.value = ''
   dateRange.value = null
   startTime.value = null
   endTime.value = null
@@ -477,6 +557,7 @@ async function handleSubmit() {
         : (form.end_date || form.start_date),
       // 兼容旧表：artist_id 取数组第一位
       artist_id: form.artist_ids[0] || null,
+      hashtags: normalizeHashtags(form.hashtags).slice(0, 10),
     }
     emit('submit', payload)
   } finally {
@@ -496,6 +577,12 @@ function handleClose() {
 </script>
 
 <style scoped>
+.hashtag-detail, .hashtag-editor { width: 100%; }
+.hashtag-item { display: inline-flex; align-items: center; gap: 1px; }
+.hashtag-editor { display: flex; flex-direction: column; gap: 8px; }
+.hashtag-input-row { width: 100%; }
+.hashtag-input-row :deep(.n-input) { flex: 1; }
+.hashtag-hint { font-size: 12px; }
 @media (max-width: 600px) {
   .form-grid { grid-template-columns: minmax(0, 1fr) !important; }
   :deep(.n-card__content) { padding: 14px !important; overflow-y: auto; }
