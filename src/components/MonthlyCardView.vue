@@ -46,7 +46,7 @@
           </span>
           <button type="button" class="event-details" @click="emit('eventClick', { extendedProps: event })">
             <span class="event-date" :class="{ 'is-cross-month': isCrossMonth(event) }" :data-tone="index % 4">
-              <strong>{{ formatDate(event) }}</strong><small>{{ formatWeekday(event.start_date) }}</small>
+              <strong>{{ formatDate(event) }}</strong><small>{{ formatWeekday(event) }}</small>
             </span>
             <span class="event-copy">
               <span class="event-title-line"><strong>{{ event.title }}</strong><b class="event-time">{{ formatTime(event) }}</b></span>
@@ -125,8 +125,14 @@ function formatDate(event) {
 function isCrossMonth(event) {
   return Boolean(event.end_date && event.start_date?.slice(0, 7) !== event.end_date.slice(0, 7))
 }
-function formatWeekday(date) {
-  return date ? weekDays[new Date(`${date}T00:00:00`).getDay()] : ''
+function formatWeekday(event) {
+  const startDate = event.start_date
+  if (!startDate) return ''
+  const startWeekday = weekDays[new Date(`${startDate}T00:00:00`).getDay()]
+  const endDate = event.end_date || startDate
+  if (endDate === startDate) return startWeekday
+  const endWeekday = weekDays[new Date(`${endDate}T00:00:00`).getDay()]
+  return `${startWeekday}-${endWeekday}`
 }
 function formatTime(event) {
   if (event.is_all_day) return '全天'
@@ -269,7 +275,7 @@ async function downloadPoster() {
 .event-date[data-tone="3"] { background: #e5e5e5; }
 .event-date strong { font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(31px, 6vw, 52px); font-weight: 900; letter-spacing: -.035em; line-height: .92; }
 .event-date.is-cross-month strong { font-size: clamp(15px, 2.8vw, 24px); line-height: .95; text-align: center; white-space: pre-line; }
-.event-date small { margin-top: 5px; font-size: 10px; font-weight: 700; }
+.event-date small { margin-top: 5px; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .event-copy { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 18px 0 18px 18px; transition: background-color .18s ease; }
 .event-title-line { display: flex; align-items: flex-start; gap: 14px; }
 .event-title-line > strong { display: -webkit-box; flex: 1; min-width: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: clamp(14px, 2.5vw, 20px); font-weight: 800; letter-spacing: .015em; line-height: 1.22; text-transform: uppercase; overflow-wrap: anywhere; }
