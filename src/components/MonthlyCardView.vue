@@ -21,30 +21,38 @@
       </header>
 
       <div v-if="monthEvents.length" class="poster-events">
-        <button
+        <div
           v-for="(event, index) in monthEvents"
           :key="event.id"
-          type="button"
           class="poster-event"
-          @click="emit('eventClick', { extendedProps: event })"
         >
-          <span class="event-image-placeholder" aria-hidden="true"></span>
-          <span class="event-date" :data-tone="index % 4">
-            <strong>{{ formatDate(event) }}</strong><small>{{ formatWeekday(event.start_date) }}</small>
+          <label v-if="isAdmin" class="event-image event-image-upload" :class="{ 'is-uploading': uploadingEventId === event.id }">
+            <input type="file" accept="image/*" :disabled="uploadingEventId === event.id" @change="handleImageChange($event, event)" />
+            <img v-if="event.card_image_url" :src="event.card_image_url" alt="" loading="lazy" />
+            <span class="image-action">{{ uploadingEventId === event.id ? '上传中' : event.card_image_url ? '更换图片' : '上传图片' }}</span>
+          </label>
+          <span v-else class="event-image" aria-hidden="true">
+            <img v-if="event.card_image_url" :src="event.card_image_url" alt="" loading="lazy" />
           </span>
-          <span class="event-copy">
-            <span class="event-title-line"><strong>{{ event.title }}</strong><b class="event-time">{{ formatTime(event) }}</b></span>
-            <span class="event-meta">
-              <span>{{ event.location || '地点待定' }}</span>
-              <span class="event-artist-hearts" aria-label="参与艺人">
-                <i v-for="artist in getEventArtists(event)" :key="artist.id" :title="artist.name">{{ artist.emoji }}</i>
+          <button type="button" class="event-details" @click="emit('eventClick', { extendedProps: event })">
+            <span class="event-date" :data-tone="index % 4">
+              <strong>{{ formatDate(event) }}</strong><small>{{ formatWeekday(event.start_date) }}</small>
+            </span>
+            <span class="event-copy">
+              <span class="event-title-line"><strong>{{ event.title }}</strong><b class="event-time">{{ formatTime(event) }}</b></span>
+              <span class="event-meta">
+                <span>{{ event.location || '地点待定' }}</span>
+                <span class="event-artist-hearts" aria-label="参与艺人">
+                  <i v-for="artist in getEventArtists(event)" :key="artist.id" :title="artist.name">{{ artist.emoji }}</i>
+                </span>
               </span>
             </span>
-          </span>
-        </button>
+          </button>
+        </div>
       </div>
 
       <div v-else class="poster-empty"><strong>本月暂无行程</strong><span>切换月份，或在管理模式下新增行程</span></div>
+      <div class="timezone-note">以上时间均为北京时间</div>
       <footer class="poster-footer"><span>RECORDTRACK</span><span>{{ monthEvents.length }} EVENTS · UPDATED {{ updatedLabel }}</span></footer>
     </article>
   </section>
@@ -56,8 +64,10 @@ import { computed, ref } from 'vue'
 const props = defineProps({
   events: { type: Array, default: () => [] },
   artists: { type: Array, default: () => [] },
+  isAdmin: { type: Boolean, default: false },
+  uploadingEventId: { type: [String, Number], default: null },
 })
-const emit = defineEmits(['eventClick'])
+const emit = defineEmits(['eventClick', 'imageUpload'])
 
 const todayMonth = new Date().toISOString().slice(0, 7)
 const availableMonths = computed(() => [...new Set(
@@ -102,6 +112,11 @@ function formatTime(event) {
   if (event.is_all_day) return '全天'
   return event.start_time?.slice(0, 5) || '待定'
 }
+function handleImageChange(domEvent, event) {
+  const file = domEvent.target.files?.[0]
+  domEvent.target.value = ''
+  if (file) emit('imageUpload', { event, file })
+}
 </script>
 
 <style scoped>
@@ -136,11 +151,19 @@ function formatTime(event) {
 .poster-artists span { display: inline-flex; align-items: center; gap: 5px; color: #d4d4d4; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .poster-artists b { font-size: 10px; }
 .poster-events { padding: 4px clamp(14px, 5vw, 48px) 24px; }
-.poster-event { display: grid; grid-template-columns: clamp(72px, 13vw, 112px) clamp(72px, 13vw, 112px) minmax(0, 1fr); align-items: stretch; width: 100%; min-height: 112px; padding: 0; border: 0; border-bottom: 1px solid #737373; background: transparent; color: inherit; cursor: pointer; font: inherit; text-align: left; }
+.poster-event { display: grid; grid-template-columns: clamp(72px, 13vw, 112px) minmax(0, 1fr); align-items: stretch; width: 100%; min-height: 112px; border-bottom: 1px solid #737373; }
 .poster-event:first-child { border-top: 1px solid #737373; }
-.poster-event:hover .event-copy, .poster-event:focus-visible .event-copy { background: rgba(255,255,255,.055); }
-.poster-event:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-.event-image-placeholder { margin: 14px 14px 14px 0; border: 1px solid #3f3f3f; background: linear-gradient(145deg, #191919, #252525); }
+.event-details { display: grid; grid-template-columns: clamp(72px, 13vw, 112px) minmax(0, 1fr); min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; text-align: left; }
+.event-details:hover .event-copy, .event-details:focus-visible .event-copy { background: rgba(255,255,255,.055); }
+.event-details:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.event-image { position: relative; display: block; min-width: 0; margin: 14px 14px 14px 0; overflow: hidden; border: 1px solid #3f3f3f; background: linear-gradient(145deg, #191919, #252525); }
+.event-image img { width: 100%; height: 100%; object-fit: cover; }
+.event-image-upload { cursor: pointer; }
+.event-image-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.image-action { position: absolute; inset: auto 4px 4px; padding: 5px 3px; background: rgba(0,0,0,.78); color: #fff; font-size: 10px; font-weight: 700; line-height: 1.2; text-align: center; }
+.event-image-upload:hover, .event-image-upload:focus-within { border-color: #f5f5f5; }
+.event-image-upload:focus-within { outline: 2px solid #fff; outline-offset: 2px; }
+.event-image-upload.is-uploading { cursor: wait; opacity: .72; }
 .event-date { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 14px; background: #f5f5f5; color: #111; }
 .event-date[data-tone="1"] { background: #d4d4d4; }
 .event-date[data-tone="2"] { background: #a3a3a3; }
@@ -157,6 +180,7 @@ function formatTime(event) {
 .event-artist-hearts i { font-size: 11px; font-style: normal; }
 .poster-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 80px 20px; border-block: 1px solid #404040; }
 .poster-empty span { color: var(--poster-muted); font-size: 12px; }
+.timezone-note { padding: 0 clamp(18px, 5vw, 48px) 14px; color: #d4d4d4; font-size: 12px; letter-spacing: .08em; text-align: right; }
 .poster-footer { display: flex; justify-content: space-between; gap: 16px; padding: 14px clamp(18px, 5vw, 48px); background: #050505; color: #a3a3a3; font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; font-size: 10px; letter-spacing: .06em; }
 @media (max-width: 600px) {
   .monthly-toolbar { align-items: flex-end; }
@@ -169,8 +193,10 @@ function formatTime(event) {
   .poster-month { align-items: flex-end; padding-bottom: 0; }
   .poster-month strong { font-size: 12px; }
   .poster-artists { margin-top: 18px; }
-  .poster-event { grid-template-columns: 52px 62px minmax(0, 1fr); min-height: 92px; }
-  .event-image-placeholder { margin: 10px 7px 10px 0; }
+  .poster-event { grid-template-columns: 52px minmax(0, 1fr); min-height: 92px; }
+  .event-details { grid-template-columns: 62px minmax(0, 1fr); }
+  .event-image { margin: 10px 7px 10px 0; }
+  .image-action { inset: auto 2px 3px; padding: 4px 1px; font-size: 9px; }
   .event-date { margin: 10px 7px; }
   .event-date strong { font-size: 27px; }
   .event-copy { padding: 12px 0 12px 7px; }
@@ -181,7 +207,8 @@ function formatTime(event) {
   .poster-footer { font-size: 8px; }
 }
 @media (max-width: 380px) {
-  .poster-event { grid-template-columns: 42px 54px minmax(0, 1fr); }
+  .poster-event { grid-template-columns: 46px minmax(0, 1fr); }
+  .event-details { grid-template-columns: 54px minmax(0, 1fr); }
   .event-date strong { font-size: 23px; }
   .event-date small { font-size: 8px; }
   .event-meta > span:first-child { max-width: 120px; }

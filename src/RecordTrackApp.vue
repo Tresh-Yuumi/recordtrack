@@ -60,7 +60,15 @@
           @date-click="handleDateClick" @event-click="openDetail"
         />
         <EventListView v-else-if="viewMode === 'list'" :events="filteredEvents" :artists="artists" @event-click="openDetail" />
-        <MonthlyCardView v-else :events="filteredEvents" :artists="artists" @event-click="openDetail" />
+        <MonthlyCardView
+          v-else
+          :events="filteredEvents"
+          :artists="artists"
+          :is-admin="isAdmin"
+          :uploading-event-id="monthlyImageUploadingId"
+          @event-click="openDetail"
+          @image-upload="handleMonthlyImageUpload"
+        />
       </main>
 
       <section v-if="isAdmin" class="data-management">
@@ -120,10 +128,11 @@ const EventModal = defineAsyncComponent(() => import('./components/EventModal.vu
 const preloadEventModal = () => import('./components/EventModal.vue')
 const QuickEntryModal = defineAsyncComponent(() => import('./components/QuickEntryModal.vue'))
 const { message, dialog } = createDiscreteApi(['message', 'dialog'])
-const { loading, fetchArtists, addEvent, updateEvent, deleteEvent, fetchEvents, uploadImage, exportData, importData } = useCalendar()
+const { loading, fetchArtists, addEvent, updateEvent, deleteEvent, fetchEvents, uploadImage, removeImage, exportData, importData } = useCalendar()
 
 const artists = ref([])
 const events = ref([])
+const monthlyImageUploadingId = ref(null)
 const activeFilter = ref(null)
 const modalVisible = ref(false)
 const modalMode = ref('create')
@@ -304,6 +313,28 @@ function handleDelete(eventId) {
 async function handleImageUpload(file, callback) {
   try { callback(await uploadImage(file)); message.success('图片上传成功') }
   catch (error) { message.error('图片上传失败：' + error.message) }
+}
+async function handleMonthlyImageUpload({ event, file }) {
+  if (!isAdmin.value || !event?.id || !file) return
+  if (!file.type?.startsWith('image/')) return message.error('请选择图片文件')
+  if (file.size > 5 * 1024 * 1024) return message.error('图片大小不能超过 5MB')
+  monthlyImageUploadingId.value = event.id
+  let uploadedUrl = ''
+  try {
+    uploadedUrl = await uploadImage(file)
+    await updateEvent(event.id, { card_image_url: uploadedUrl })
+    if (event.card_image_url && event.card_image_url !== uploadedUrl) {
+      removeImage(event.card_image_url).catch(() => {})
+    }
+    events.value = await fetchEvents()
+    message.success('卡片图片已更新')
+  } catch (error) {
+    if (uploadedUrl) removeImage(uploadedUrl).catch(() => {})
+    if (error.status === 401) accessMode.value = 'viewer'
+    message.error('卡片图片上传失败：' + error.message)
+  } finally {
+    monthlyImageUploadingId.value = null
+  }
 }
 async function handleExport() {
   try { await exportData(); message.success('备份导出成功') }

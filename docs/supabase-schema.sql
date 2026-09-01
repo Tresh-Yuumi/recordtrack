@@ -30,11 +30,13 @@ CREATE TABLE IF NOT EXISTS events (
   notes       text DEFAULT '',
   hashtags    text[] NOT NULL DEFAULT '{}',
   image_urls  text[] DEFAULT '{}',
+  card_image_url text,
   created_at  timestamptz DEFAULT now()
 );
 
 -- 已创建 events 表的现有项目也会补充该字段
 ALTER TABLE events ADD COLUMN IF NOT EXISTS hashtags text[] NOT NULL DEFAULT '{}';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS card_image_url text;
 
 -- 3. 索引
 CREATE INDEX IF NOT EXISTS idx_artists_user ON artists(user_id);

@@ -4,7 +4,7 @@ import { APP_USER_ID, ensureServerConfig, supabaseAdmin } from './_lib/supabase-
 
 const EVENT_FIELDS = [
   'artist_ids', 'artist_id', 'title', 'type', 'category', 'is_all_day',
-  'start_date', 'end_date', 'start_time', 'end_time', 'location', 'notes', 'hashtags', 'image_urls',
+  'start_date', 'end_date', 'start_time', 'end_time', 'location', 'notes', 'hashtags', 'image_urls', 'card_image_url',
 ]
 
 function normalizeHashtags(value) {
