@@ -141,19 +141,36 @@ async function downloadPoster() {
   if (!posterRef.value || downloading.value) return
   downloading.value = true
   try {
+    const poster = posterRef.value
     await document.fonts?.ready
-    await Promise.all([...posterRef.value.querySelectorAll('img')].map((img) => {
+    const posterImages = [...poster.querySelectorAll('img')]
+    posterImages.forEach((img) => { img.loading = 'eager' })
+    await Promise.all(posterImages.map((img) => {
       if (img.complete) return Promise.resolve()
       return new Promise((resolve) => {
         img.addEventListener('load', resolve, { once: true })
         img.addEventListener('error', resolve, { once: true })
       })
     }))
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+
+    const rect = poster.getBoundingClientRect()
+    const posterWidth = Math.ceil(Math.max(poster.scrollWidth, rect.width))
+    const posterHeight = Math.ceil(Math.max(poster.scrollHeight, rect.height)) + 2
+    const maxCanvasDimension = 14000
+    const pixelRatio = Math.min(2, maxCanvasDimension / Math.max(posterWidth, posterHeight))
     const { toBlob } = await import('html-to-image')
-    const blob = await toBlob(posterRef.value, {
+    const blob = await toBlob(poster, {
       backgroundColor: '#111111',
       cacheBust: true,
-      pixelRatio: 2,
+      width: posterWidth,
+      height: posterHeight,
+      pixelRatio,
+      style: {
+        width: `${posterWidth}px`,
+        height: `${posterHeight}px`,
+        maxHeight: 'none',
+      },
     })
     if (!blob) throw new Error('海报生成失败')
     const downloadUrl = URL.createObjectURL(blob)
