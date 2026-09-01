@@ -1,14 +1,19 @@
 <template>
   <section class="monthly-card-view" aria-label="月度行程卡片">
     <div class="monthly-toolbar">
-      <div><strong>月度行程卡片</strong><span>选择月份查看对应行程</span></div>
-      <label class="month-control">
-        <span>月份</span>
-        <input v-model="selectedMonth" type="month" :min="monthBounds.min" :max="monthBounds.max" />
-      </label>
+      <div class="toolbar-heading"><strong>月度行程卡片</strong><span>选择月份查看对应行程</span></div>
+      <div class="monthly-actions">
+        <label class="month-control">
+          <span>月份</span>
+          <input v-model="selectedMonth" type="month" :min="monthBounds.min" :max="monthBounds.max" />
+        </label>
+        <button type="button" class="download-poster-button" :disabled="downloading" @click="downloadPoster">
+          {{ downloading ? '生成中…' : '下载海报' }}
+        </button>
+      </div>
     </div>
 
-    <article class="schedule-poster">
+    <article ref="posterRef" class="schedule-poster">
       <header class="poster-header">
         <div class="poster-kicker">RECORDTRACK · MONTHLY EDITION</div>
         <div class="poster-heading-row">
@@ -71,8 +76,10 @@ const props = defineProps({
   isAdmin: { type: Boolean, default: false },
   uploadingEventId: { type: [String, Number], default: null },
 })
-const emit = defineEmits(['eventClick', 'imageUpload'])
+const emit = defineEmits(['eventClick', 'imageUpload', 'downloadError'])
 const defaultCardImageUrl = '/monthly-card-default.jpg'
+const posterRef = ref(null)
+const downloading = ref(false)
 
 const todayMonth = new Date().toISOString().slice(0, 7)
 const availableMonths = computed(() => [...new Set(
@@ -122,17 +129,55 @@ function handleImageChange(domEvent, event) {
   domEvent.target.value = ''
   if (file) emit('imageUpload', { event, file })
 }
+async function downloadPoster() {
+  if (!posterRef.value || downloading.value) return
+  downloading.value = true
+  try {
+    await document.fonts?.ready
+    await Promise.all([...posterRef.value.querySelectorAll('img')].map((img) => {
+      if (img.complete) return Promise.resolve()
+      return new Promise((resolve) => {
+        img.addEventListener('load', resolve, { once: true })
+        img.addEventListener('error', resolve, { once: true })
+      })
+    }))
+    const { toBlob } = await import('html-to-image')
+    const blob = await toBlob(posterRef.value, {
+      backgroundColor: '#111111',
+      cacheBust: true,
+      pixelRatio: 2,
+    })
+    if (!blob) throw new Error('海报生成失败')
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.download = `recordtrack-${selectedMonth.value || 'monthly'}.png`
+    link.href = downloadUrl
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+  } catch {
+    emit('downloadError')
+  } finally {
+    downloading.value = false
+  }
+}
 </script>
 
 <style scoped>
 .monthly-card-view { width: 100%; }
 .monthly-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 860px; margin: 0 auto 14px; }
-.monthly-toolbar > div { display: flex; flex-direction: column; gap: 2px; }
+.toolbar-heading { display: flex; flex-direction: column; gap: 2px; }
 .monthly-toolbar strong { font-size: 15px; }
-.monthly-toolbar > div span { color: #737373; font-size: 12px; }
+.toolbar-heading span { color: #737373; font-size: 12px; }
+.monthly-actions { display: flex; align-items: flex-end; gap: 8px; }
 .month-control { display: flex; align-items: center; gap: 8px; color: #525252; font-size: 12px; }
 .month-control input { min-height: 36px; padding: 5px 10px; border: 1px solid #d4d4d4; border-radius: 7px; background: #fff; color: #262626; font: inherit; }
 .month-control input:focus-visible { outline: 2px solid #262626; outline-offset: 2px; }
+.download-poster-button { min-height: 36px; padding: 6px 12px; border: 1px solid #262626; border-radius: 7px; background: #262626; color: #fff; cursor: pointer; font: 600 12px/1 sans-serif; white-space: nowrap; }
+.download-poster-button:hover:not(:disabled) { background: #404040; }
+.download-poster-button:focus-visible { outline: 2px solid #262626; outline-offset: 2px; }
+.download-poster-button:disabled { cursor: wait; opacity: .58; }
 .schedule-poster {
   --poster-white: #f7f7f4;
   --poster-muted: #a3a3a3;
@@ -188,8 +233,10 @@ function handleImageChange(domEvent, event) {
 .poster-footer { display: flex; justify-content: space-between; gap: 16px; padding: 14px clamp(18px, 5vw, 48px); background: #050505; color: #a3a3a3; font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; font-size: 10px; letter-spacing: .06em; }
 @media (max-width: 600px) {
   .monthly-toolbar { align-items: flex-end; }
-  .monthly-toolbar > div span { display: none; }
+  .toolbar-heading span { display: none; }
+  .monthly-actions { gap: 6px; }
   .month-control { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .download-poster-button { padding-inline: 9px; }
   .schedule-poster { border-radius: 2px; }
   .poster-header { padding-bottom: 18px; }
   .poster-heading-row { flex-direction: column; align-items: stretch; gap: 10px; }

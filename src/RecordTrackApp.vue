@@ -68,6 +68,7 @@
           :uploading-event-id="monthlyImageUploadingId"
           @event-click="openDetail"
           @image-upload="handleMonthlyImageUpload"
+          @download-error="message.error('海报下载失败，请稍后重试')"
         />
       </main>
 
