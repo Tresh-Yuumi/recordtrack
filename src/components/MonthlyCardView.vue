@@ -52,8 +52,7 @@
       </div>
 
       <div v-else class="poster-empty"><strong>本月暂无行程</strong><span>切换月份，或在管理模式下新增行程</span></div>
-      <div class="timezone-note">以上时间均为北京时间</div>
-      <footer class="poster-footer"><span>RECORDTRACK</span><span>{{ monthEvents.length }} EVENTS · UPDATED {{ updatedLabel }}</span></footer>
+      <footer class="poster-footer"><span>RECORDTRACK</span><span>{{ monthEvents.length }} EVENTS · UPDATED {{ updatedLabel }} · TIMEZONE UTC+8</span></footer>
     </article>
   </section>
 </template>
@@ -180,7 +179,6 @@ function handleImageChange(domEvent, event) {
 .event-artist-hearts i { font-size: 11px; font-style: normal; }
 .poster-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 80px 20px; border-block: 1px solid #404040; }
 .poster-empty span { color: var(--poster-muted); font-size: 12px; }
-.timezone-note { padding: 0 clamp(18px, 5vw, 48px) 14px; color: #d4d4d4; font-size: 12px; letter-spacing: .08em; text-align: right; }
 .poster-footer { display: flex; justify-content: space-between; gap: 16px; padding: 14px clamp(18px, 5vw, 48px); background: #050505; color: #a3a3a3; font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; font-size: 10px; letter-spacing: .06em; }
 @media (max-width: 600px) {
   .monthly-toolbar { align-items: flex-end; }
@@ -204,7 +202,7 @@ function handleImageChange(domEvent, event) {
   .event-title-line > strong { font-size: 12px; }
   .event-time { min-width: 48px; padding: 5px 4px; font-size: 10px; }
   .event-meta { gap: 6px; margin-top: 7px; font-size: 10px; }
-  .poster-footer { font-size: 8px; }
+  .poster-footer { gap: 8px; font-size: 8px; letter-spacing: .025em; white-space: nowrap; }
 }
 @media (max-width: 380px) {
   .poster-event { grid-template-columns: 46px minmax(0, 1fr); }
