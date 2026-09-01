@@ -209,12 +209,12 @@ async function downloadPoster() {
 .poster-artists span { display: inline-flex; align-items: center; gap: 5px; color: #d4d4d4; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .poster-artists b { font-size: 10px; }
 .poster-events { padding: 4px clamp(14px, 5vw, 48px) 24px; }
-.poster-event { display: grid; grid-template-columns: clamp(72px, 13vw, 112px) minmax(0, 1fr); align-items: stretch; width: 100%; min-height: 112px; border-bottom: 1px solid #737373; }
+.poster-event { display: grid; grid-template-columns: clamp(72px, 13vw, 112px) minmax(0, 1fr); align-items: stretch; width: 100%; min-height: 124px; border-bottom: 1px solid #737373; }
 .poster-event:first-child { border-top: 1px solid #737373; }
-.event-details { display: grid; grid-template-columns: clamp(72px, 13vw, 112px) minmax(0, 1fr); min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; text-align: left; }
+.event-details { display: grid; grid-template-columns: clamp(72px, 13vw, 112px) minmax(0, 1fr); min-width: 0; min-height: 124px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; text-align: left; }
 .event-details:hover .event-copy, .event-details:focus-visible .event-copy { background: rgba(255,255,255,.055); }
 .event-details:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
-.event-image { position: relative; display: block; min-width: 0; margin: 14px 14px 14px 0; overflow: hidden; border: 1px solid #3f3f3f; background: linear-gradient(145deg, #191919, #252525); }
+.event-image { position: relative; display: block; align-self: center; width: calc(100% - 14px); height: 88px; min-width: 0; margin-right: 14px; overflow: hidden; border: 1px solid #3f3f3f; background: linear-gradient(145deg, #191919, #252525); }
 .event-image img { width: 100%; height: 100%; object-fit: cover; }
 .event-image-upload { cursor: pointer; }
 .event-image-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
@@ -222,7 +222,7 @@ async function downloadPoster() {
 .event-image-upload:focus-within { outline: 2px solid #fff; outline-offset: 2px; }
 .event-image-upload.is-uploading { cursor: wait; opacity: .72; }
 .event-image-upload.is-uploading::after { position: absolute; inset: 50% auto auto 50%; width: 18px; height: 18px; margin: -10px 0 0 -10px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; content: ''; animation: upload-spin .7s linear infinite; }
-.event-date { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 14px; background: #f5f5f5; color: #111; }
+.event-date { display: flex; flex-direction: column; align-items: center; align-self: center; justify-content: center; min-height: 92px; margin: 14px; background: #f5f5f5; color: #111; }
 .event-date[data-tone="1"] { background: #d4d4d4; }
 .event-date[data-tone="2"] { background: #a3a3a3; }
 .event-date[data-tone="3"] { background: #e5e5e5; }
@@ -231,7 +231,7 @@ async function downloadPoster() {
 .event-date small { margin-top: 5px; font-size: 10px; font-weight: 700; }
 .event-copy { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 18px 0 18px 18px; transition: background-color .18s ease; }
 .event-title-line { display: flex; align-items: flex-start; gap: 14px; }
-.event-title-line > strong { flex: 1; min-width: 0; font-size: clamp(14px, 2.5vw, 20px); font-weight: 800; letter-spacing: .015em; line-height: 1.22; text-transform: uppercase; overflow-wrap: anywhere; }
+.event-title-line > strong { display: -webkit-box; flex: 1; min-width: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: clamp(14px, 2.5vw, 20px); font-weight: 800; letter-spacing: .015em; line-height: 1.22; text-transform: uppercase; overflow-wrap: anywhere; }
 .event-time { flex: 0 0 auto; min-width: 64px; padding: 6px 8px; background: var(--poster-white); color: #111; font-family: 'Arial Narrow', sans-serif; font-size: clamp(12px, 2vw, 16px); font-weight: 900; text-align: center; }
 .event-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; color: var(--poster-muted); font-size: 12px; }
 .event-meta > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -253,10 +253,10 @@ async function downloadPoster() {
   .poster-month { align-items: flex-end; padding-bottom: 0; }
   .poster-month strong { font-size: 12px; }
   .poster-artists { margin-top: 18px; }
-  .poster-event { grid-template-columns: 52px minmax(0, 1fr); min-height: 92px; }
-  .event-details { grid-template-columns: 62px minmax(0, 1fr); }
-  .event-image { margin: 10px 7px 10px 0; }
-  .event-date { margin: 10px 7px; }
+  .poster-event { grid-template-columns: 52px minmax(0, 1fr); min-height: 100px; }
+  .event-details { grid-template-columns: 62px minmax(0, 1fr); min-height: 100px; }
+  .event-image { width: calc(100% - 7px); height: 72px; margin-right: 7px; }
+  .event-date { min-height: 80px; margin: 10px 7px; }
   .event-date strong { font-size: 27px; }
   .event-date.is-cross-month strong { font-size: 12px; }
   .event-copy { padding: 12px 0 12px 7px; }
@@ -269,6 +269,7 @@ async function downloadPoster() {
 @media (max-width: 380px) {
   .poster-event { grid-template-columns: 46px minmax(0, 1fr); }
   .event-details { grid-template-columns: 54px minmax(0, 1fr); }
+  .event-image { height: 64px; }
   .event-date strong { font-size: 23px; }
   .event-date small { font-size: 8px; }
   .event-meta > span:first-child { max-width: 120px; }
