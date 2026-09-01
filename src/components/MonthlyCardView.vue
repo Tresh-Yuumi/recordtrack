@@ -119,8 +119,8 @@ function formatDate(event) {
   const start = String(Number(startDate.slice(8, 10)) || '--').padStart(2, '0')
   if (startDate === endDate) return start
   const end = String(Number(endDate.slice(8, 10)) || '--').padStart(2, '0')
-  if (startDate.slice(0, 7) === endDate.slice(0, 7)) return `${start}–${end}`
-  return `${startDate.slice(5).replace('-', '/')}–\n${endDate.slice(5).replace('-', '/')}`
+  if (startDate.slice(0, 7) === endDate.slice(0, 7)) return `${start}-${end}`
+  return `${startDate.slice(5).replace('-', '/')}-\n${endDate.slice(5).replace('-', '/')}`
 }
 function isCrossMonth(event) {
   return Boolean(event.end_date && event.start_date?.slice(0, 7) !== event.end_date.slice(0, 7))
