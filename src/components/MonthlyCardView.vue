@@ -27,12 +27,17 @@
           class="poster-event"
         >
           <label v-if="isAdmin" class="event-image event-image-upload" :class="{ 'is-uploading': uploadingEventId === event.id }">
-            <input type="file" accept="image/*" :disabled="uploadingEventId === event.id" @change="handleImageChange($event, event)" />
-            <img v-if="event.card_image_url" :src="event.card_image_url" alt="" loading="lazy" />
-            <span class="image-action">{{ uploadingEventId === event.id ? '上传中' : event.card_image_url ? '更换图片' : '上传图片' }}</span>
+            <input
+              type="file"
+              accept="image/*"
+              :aria-label="`${event.card_image_url ? '更换' : '上传'}“${event.title}”的月度卡片图片`"
+              :disabled="uploadingEventId === event.id"
+              @change="handleImageChange($event, event)"
+            />
+            <img :src="event.card_image_url || defaultCardImageUrl" alt="" loading="lazy" />
           </label>
           <span v-else class="event-image" aria-hidden="true">
-            <img v-if="event.card_image_url" :src="event.card_image_url" alt="" loading="lazy" />
+            <img :src="event.card_image_url || defaultCardImageUrl" alt="" loading="lazy" />
           </span>
           <button type="button" class="event-details" @click="emit('eventClick', { extendedProps: event })">
             <span class="event-date" :data-tone="index % 4">
@@ -67,6 +72,7 @@ const props = defineProps({
   uploadingEventId: { type: [String, Number], default: null },
 })
 const emit = defineEmits(['eventClick', 'imageUpload'])
+const defaultCardImageUrl = '/monthly-card-default.jpg'
 
 const todayMonth = new Date().toISOString().slice(0, 7)
 const availableMonths = computed(() => [...new Set(
@@ -159,10 +165,10 @@ function handleImageChange(domEvent, event) {
 .event-image img { width: 100%; height: 100%; object-fit: cover; }
 .event-image-upload { cursor: pointer; }
 .event-image-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.image-action { position: absolute; inset: auto 4px 4px; padding: 5px 3px; background: rgba(0,0,0,.78); color: #fff; font-size: 10px; font-weight: 700; line-height: 1.2; text-align: center; }
 .event-image-upload:hover, .event-image-upload:focus-within { border-color: #f5f5f5; }
 .event-image-upload:focus-within { outline: 2px solid #fff; outline-offset: 2px; }
 .event-image-upload.is-uploading { cursor: wait; opacity: .72; }
+.event-image-upload.is-uploading::after { position: absolute; inset: 50% auto auto 50%; width: 18px; height: 18px; margin: -10px 0 0 -10px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; content: ''; animation: upload-spin .7s linear infinite; }
 .event-date { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 14px; background: #f5f5f5; color: #111; }
 .event-date[data-tone="1"] { background: #d4d4d4; }
 .event-date[data-tone="2"] { background: #a3a3a3; }
@@ -194,7 +200,6 @@ function handleImageChange(domEvent, event) {
   .poster-event { grid-template-columns: 52px minmax(0, 1fr); min-height: 92px; }
   .event-details { grid-template-columns: 62px minmax(0, 1fr); }
   .event-image { margin: 10px 7px 10px 0; }
-  .image-action { inset: auto 2px 3px; padding: 4px 1px; font-size: 9px; }
   .event-date { margin: 10px 7px; }
   .event-date strong { font-size: 27px; }
   .event-copy { padding: 12px 0 12px 7px; }
@@ -211,5 +216,9 @@ function handleImageChange(domEvent, event) {
   .event-date small { font-size: 8px; }
   .event-meta > span:first-child { max-width: 120px; }
 }
-@media (prefers-reduced-motion: reduce) { .event-copy { transition: none; } }
+@keyframes upload-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .event-copy { transition: none; }
+  .event-image-upload.is-uploading::after { animation: none; border-color: #fff; }
+}
 </style>
