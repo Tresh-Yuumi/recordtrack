@@ -1,0 +1,190 @@
+<template>
+  <section class="monthly-card-view" aria-label="月度行程卡片">
+    <div class="monthly-toolbar">
+      <div><strong>月度行程卡片</strong><span>选择月份查看对应行程</span></div>
+      <label class="month-control">
+        <span>月份</span>
+        <input v-model="selectedMonth" type="month" :min="monthBounds.min" :max="monthBounds.max" />
+      </label>
+    </div>
+
+    <article class="schedule-poster">
+      <header class="poster-header">
+        <div class="poster-kicker">RECORDTRACK · MONTHLY EDITION</div>
+        <div class="poster-heading-row">
+          <h2>MONTHLY<br />SCHEDULE</h2>
+          <div class="poster-month"><span>{{ selectedYear }}</span><strong>{{ selectedMonthName }}</strong></div>
+        </div>
+        <div v-if="monthArtists.length" class="poster-artists" aria-label="本月艺人">
+          <span v-for="artist in monthArtists" :key="artist.id"><b aria-hidden="true">{{ artist.emoji }}</b>{{ artist.name }}</span>
+        </div>
+      </header>
+
+      <div v-if="monthEvents.length" class="poster-events">
+        <button
+          v-for="(event, index) in monthEvents"
+          :key="event.id"
+          type="button"
+          class="poster-event"
+          @click="emit('eventClick', { extendedProps: event })"
+        >
+          <span class="event-image-placeholder" aria-hidden="true"></span>
+          <span class="event-date" :data-tone="index % 4">
+            <strong>{{ formatDate(event) }}</strong><small>{{ formatWeekday(event.start_date) }}</small>
+          </span>
+          <span class="event-copy">
+            <span class="event-title-line"><strong>{{ event.title }}</strong><b class="event-time">{{ formatTime(event) }}</b></span>
+            <span class="event-meta">
+              <span>{{ event.location || '地点待定' }}</span>
+              <span class="event-artist-hearts" aria-label="参与艺人">
+                <i v-for="artist in getEventArtists(event)" :key="artist.id" :title="artist.name">{{ artist.emoji }}</i>
+              </span>
+            </span>
+          </span>
+        </button>
+      </div>
+
+      <div v-else class="poster-empty"><strong>本月暂无行程</strong><span>切换月份，或在管理模式下新增行程</span></div>
+      <footer class="poster-footer"><span>RECORDTRACK</span><span>{{ monthEvents.length }} EVENTS · UPDATED {{ updatedLabel }}</span></footer>
+    </article>
+  </section>
+</template>
+
+<script setup>
+import { computed, ref } from 'vue'
+
+const props = defineProps({
+  events: { type: Array, default: () => [] },
+  artists: { type: Array, default: () => [] },
+})
+const emit = defineEmits(['eventClick'])
+
+const todayMonth = new Date().toISOString().slice(0, 7)
+const availableMonths = computed(() => [...new Set(
+  props.events.map((event) => event.start_date?.slice(0, 7)).filter(Boolean),
+)].sort())
+const selectedMonth = ref(todayMonth)
+const monthBounds = computed(() => ({
+  min: [availableMonths.value[0], `${new Date().getFullYear() - 2}-01`].filter(Boolean).sort()[0],
+  max: [availableMonths.value.at(-1), `${new Date().getFullYear() + 2}-12`].filter(Boolean).sort().at(-1),
+}))
+const monthEvents = computed(() => props.events
+  .filter((event) => event.start_date?.startsWith(selectedMonth.value))
+  .sort((a, b) => `${a.start_date}${a.start_time || ''}`.localeCompare(`${b.start_date}${b.start_time || ''}`)))
+const selectedYear = computed(() => selectedMonth.value?.slice(0, 4) || '----')
+const selectedMonthName = computed(() => {
+  const month = Number(selectedMonth.value?.slice(5, 7))
+  return month ? new Intl.DateTimeFormat('en', { month: 'long' }).format(new Date(2026, month - 1, 1)).toUpperCase() : 'MONTH'
+})
+const monthArtists = computed(() => {
+  const ids = new Set(monthEvents.value.flatMap((event) => getArtistIds(event)))
+  return props.artists.filter((artist) => ids.has(artist.id))
+})
+const updatedLabel = computed(() => new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit' }).format(new Date()))
+const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+
+function getArtistIds(event) {
+  return event.artist_ids?.length ? event.artist_ids : (event.artist_id ? [event.artist_id] : [])
+}
+function getEventArtists(event) {
+  const ids = getArtistIds(event)
+  return ids.map((id) => props.artists.find((artist) => artist.id === id)).filter(Boolean)
+}
+function formatDate(event) {
+  const start = String(Number(event.start_date?.slice(8, 10)) || '--').padStart(2, '0')
+  const end = String(Number(event.end_date?.slice(8, 10)) || '').padStart(2, '0')
+  return event.end_date && event.end_date !== event.start_date ? `${start}–${end}` : start
+}
+function formatWeekday(date) {
+  return date ? weekDays[new Date(`${date}T00:00:00`).getDay()] : ''
+}
+function formatTime(event) {
+  if (event.is_all_day) return '全天'
+  return event.start_time?.slice(0, 5) || '待定'
+}
+</script>
+
+<style scoped>
+.monthly-card-view { width: 100%; }
+.monthly-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 860px; margin: 0 auto 14px; }
+.monthly-toolbar > div { display: flex; flex-direction: column; gap: 2px; }
+.monthly-toolbar strong { font-size: 15px; }
+.monthly-toolbar > div span { color: #737373; font-size: 12px; }
+.month-control { display: flex; align-items: center; gap: 8px; color: #525252; font-size: 12px; }
+.month-control input { min-height: 36px; padding: 5px 10px; border: 1px solid #d4d4d4; border-radius: 7px; background: #fff; color: #262626; font: inherit; }
+.month-control input:focus-visible { outline: 2px solid #262626; outline-offset: 2px; }
+.schedule-poster {
+  --poster-white: #f7f7f4;
+  --poster-muted: #a3a3a3;
+  width: min(100%, 860px);
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 4px;
+  background: radial-gradient(circle at 15% 12%, rgba(255,255,255,.08) 0 1px, transparent 1.5px) 0 0 / 14px 14px,
+    radial-gradient(circle at 86% 92%, rgba(255,255,255,.06) 0 1px, transparent 1.5px) 0 0 / 18px 18px, #111;
+  color: var(--poster-white);
+  box-shadow: 0 18px 50px rgba(0,0,0,.2);
+}
+.poster-header { padding: clamp(24px, 6vw, 56px) clamp(18px, 7vw, 64px) 24px; }
+.poster-kicker { margin-bottom: 8px; color: #bdbdbd; font-size: clamp(10px, 1.6vw, 13px); font-weight: 700; letter-spacing: .16em; }
+.poster-heading-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.poster-heading-row h2 { margin: 0; font-family: 'Arial Narrow', Impact, 'Helvetica Neue Condensed', sans-serif; font-size: clamp(48px, 10vw, 92px); font-stretch: condensed; font-weight: 900; letter-spacing: -.055em; line-height: .78; }
+.poster-month { display: flex; flex-direction: column; align-items: flex-end; padding-bottom: 3px; }
+.poster-month span { font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; font-size: 13px; }
+.poster-month strong { font-size: clamp(13px, 2.4vw, 20px); letter-spacing: .05em; }
+.poster-artists { display: flex; flex-wrap: wrap; gap: 7px 18px; margin-top: 24px; padding-top: 14px; border-top: 1px solid #404040; }
+.poster-artists span { display: inline-flex; align-items: center; gap: 5px; color: #d4d4d4; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.poster-artists b { font-size: 10px; }
+.poster-events { padding: 4px clamp(14px, 5vw, 48px) 24px; }
+.poster-event { display: grid; grid-template-columns: clamp(72px, 13vw, 112px) clamp(72px, 13vw, 112px) minmax(0, 1fr); align-items: stretch; width: 100%; min-height: 112px; padding: 0; border: 0; border-bottom: 1px solid #737373; background: transparent; color: inherit; cursor: pointer; font: inherit; text-align: left; }
+.poster-event:first-child { border-top: 1px solid #737373; }
+.poster-event:hover .event-copy, .poster-event:focus-visible .event-copy { background: rgba(255,255,255,.055); }
+.poster-event:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.event-image-placeholder { margin: 14px 14px 14px 0; border: 1px solid #3f3f3f; background: linear-gradient(145deg, #191919, #252525); }
+.event-date { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 14px; background: #f5f5f5; color: #111; }
+.event-date[data-tone="1"] { background: #d4d4d4; }
+.event-date[data-tone="2"] { background: #a3a3a3; }
+.event-date[data-tone="3"] { background: #e5e5e5; }
+.event-date strong { font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(31px, 6vw, 52px); font-weight: 900; letter-spacing: -.035em; line-height: .92; }
+.event-date small { margin-top: 5px; font-size: 10px; font-weight: 700; }
+.event-copy { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 18px 0 18px 18px; transition: background-color .18s ease; }
+.event-title-line { display: flex; align-items: flex-start; gap: 14px; }
+.event-title-line > strong { flex: 1; min-width: 0; font-size: clamp(14px, 2.5vw, 20px); font-weight: 800; letter-spacing: .015em; line-height: 1.22; text-transform: uppercase; overflow-wrap: anywhere; }
+.event-time { flex: 0 0 auto; min-width: 64px; padding: 6px 8px; background: var(--poster-white); color: #111; font-family: 'Arial Narrow', sans-serif; font-size: clamp(12px, 2vw, 16px); font-weight: 900; text-align: center; }
+.event-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; color: var(--poster-muted); font-size: 12px; }
+.event-meta > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-artist-hearts { display: inline-flex; flex: 0 0 auto; gap: 2px; }
+.event-artist-hearts i { font-size: 11px; font-style: normal; }
+.poster-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 80px 20px; border-block: 1px solid #404040; }
+.poster-empty span { color: var(--poster-muted); font-size: 12px; }
+.poster-footer { display: flex; justify-content: space-between; gap: 16px; padding: 14px clamp(18px, 5vw, 48px); background: #050505; color: #a3a3a3; font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; font-size: 10px; letter-spacing: .06em; }
+@media (max-width: 600px) {
+  .monthly-toolbar { align-items: flex-end; }
+  .monthly-toolbar > div span { display: none; }
+  .month-control { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .schedule-poster { border-radius: 2px; }
+  .poster-header { padding-bottom: 18px; }
+  .poster-heading-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .poster-heading-row h2 { font-size: clamp(39px, 13vw, 58px); }
+  .poster-month { align-items: flex-end; padding-bottom: 0; }
+  .poster-month strong { font-size: 12px; }
+  .poster-artists { margin-top: 18px; }
+  .poster-event { grid-template-columns: 52px 62px minmax(0, 1fr); min-height: 92px; }
+  .event-image-placeholder { margin: 10px 7px 10px 0; }
+  .event-date { margin: 10px 7px; }
+  .event-date strong { font-size: 27px; }
+  .event-copy { padding: 12px 0 12px 7px; }
+  .event-title-line { gap: 6px; }
+  .event-title-line > strong { font-size: 12px; }
+  .event-time { min-width: 48px; padding: 5px 4px; font-size: 10px; }
+  .event-meta { gap: 6px; margin-top: 7px; font-size: 10px; }
+  .poster-footer { font-size: 8px; }
+}
+@media (max-width: 380px) {
+  .poster-event { grid-template-columns: 42px 54px minmax(0, 1fr); }
+  .event-date strong { font-size: 23px; }
+  .event-date small { font-size: 8px; }
+  .event-meta > span:first-child { max-width: 120px; }
+}
+@media (prefers-reduced-motion: reduce) { .event-copy { transition: none; } }
+</style>

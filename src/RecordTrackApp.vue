@@ -49,6 +49,7 @@
           <n-space :size="6" class="view-switch">
             <n-button :type="viewMode === 'calendar' ? 'primary' : 'default'" size="tiny" @click="viewMode = 'calendar'">📅 日历</n-button>
             <n-button :type="viewMode === 'list' ? 'primary' : 'default'" size="tiny" @click="viewMode = 'list'">📋 列表</n-button>
+            <n-button :type="viewMode === 'monthly' ? 'primary' : 'default'" size="tiny" @click="viewMode = 'monthly'">月度卡片</n-button>
           </n-space>
         </div>
       </section>
@@ -58,7 +59,8 @@
           v-if="viewMode === 'calendar'" :events="filteredEvents" :artists="artists" :loading="loading"
           @date-click="handleDateClick" @event-click="openDetail"
         />
-        <EventListView v-else :events="filteredEvents" :artists="artists" @event-click="openDetail" />
+        <EventListView v-else-if="viewMode === 'list'" :events="filteredEvents" :artists="artists" @event-click="openDetail" />
+        <MonthlyCardView v-else :events="filteredEvents" :artists="artists" @event-click="openDetail" />
       </main>
 
       <section v-if="isAdmin" class="data-management">
@@ -113,6 +115,7 @@ import { getAdminSession, loginAdmin, logoutAdmin } from './lib/adminApi.js'
 
 const props = defineProps({ initialMode: { type: String, default: 'viewer' } })
 const CalendarView = defineAsyncComponent(() => import('./components/CalendarView.vue'))
+const MonthlyCardView = defineAsyncComponent(() => import('./components/MonthlyCardView.vue'))
 const EventModal = defineAsyncComponent(() => import('./components/EventModal.vue'))
 const preloadEventModal = () => import('./components/EventModal.vue')
 const QuickEntryModal = defineAsyncComponent(() => import('./components/QuickEntryModal.vue'))
