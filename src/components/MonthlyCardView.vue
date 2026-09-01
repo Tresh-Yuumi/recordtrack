@@ -140,10 +140,32 @@ function handleImageChange(domEvent, event) {
 async function downloadPoster() {
   if (!posterRef.value || downloading.value) return
   downloading.value = true
+  let exportFrame = null
   try {
-    const poster = posterRef.value
     await document.fonts?.ready
-    const posterImages = [...poster.querySelectorAll('img')]
+
+    exportFrame = document.createElement('div')
+    exportFrame.setAttribute('aria-hidden', 'true')
+    Object.assign(exportFrame.style, {
+      position: 'fixed',
+      top: '0',
+      left: '-10000px',
+      width: '864px',
+      padding: '2px',
+      boxSizing: 'border-box',
+      background: '#111111',
+      pointerEvents: 'none',
+    })
+    const exportPoster = posterRef.value.cloneNode(true)
+    Object.assign(exportPoster.style, {
+      width: '860px',
+      maxWidth: 'none',
+      margin: '0',
+    })
+    exportFrame.appendChild(exportPoster)
+    document.body.appendChild(exportFrame)
+
+    const posterImages = [...exportPoster.querySelectorAll('img')]
     posterImages.forEach((img) => { img.loading = 'eager' })
     await Promise.all(posterImages.map((img) => {
       if (img.complete) return Promise.resolve()
@@ -154,13 +176,13 @@ async function downloadPoster() {
     }))
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 
-    const rect = poster.getBoundingClientRect()
-    const posterWidth = Math.ceil(Math.max(poster.scrollWidth, rect.width))
-    const posterHeight = Math.ceil(Math.max(poster.scrollHeight, rect.height)) + 2
+    const rect = exportFrame.getBoundingClientRect()
+    const posterWidth = Math.ceil(Math.max(exportFrame.scrollWidth, rect.width))
+    const posterHeight = Math.ceil(Math.max(exportFrame.scrollHeight, rect.height))
     const maxCanvasDimension = 14000
     const pixelRatio = Math.min(2, maxCanvasDimension / Math.max(posterWidth, posterHeight))
     const { toBlob } = await import('html-to-image')
-    const blob = await toBlob(poster, {
+    const blob = await toBlob(exportFrame, {
       backgroundColor: '#111111',
       cacheBust: true,
       width: posterWidth,
@@ -170,6 +192,7 @@ async function downloadPoster() {
         width: `${posterWidth}px`,
         height: `${posterHeight}px`,
         maxHeight: 'none',
+        position: 'static',
       },
     })
     if (!blob) throw new Error('海报生成失败')
@@ -184,6 +207,7 @@ async function downloadPoster() {
   } catch {
     emit('downloadError')
   } finally {
+    exportFrame?.remove()
     downloading.value = false
   }
 }
