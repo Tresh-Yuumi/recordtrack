@@ -265,6 +265,7 @@ import {
   NTag, NDatePicker, NTimePicker, NSwitch, NUpload, NImage,
   NDescriptions, NDescriptionsItem, NText, NDivider, createDiscreteApi,
 } from 'naive-ui'
+import { isValidDateRange } from '../lib/dateRange.js'
 import { EVENT_TYPES, EVENT_CATEGORIES } from '../config/eventTypes.js'
 
 const { message } = createDiscreteApi(['message'])
@@ -330,6 +331,9 @@ watch(dateRange, (val) => {
   if (val && val.length === 2) {
     form.start_date = val[0]
     form.end_date = val[1]
+  } else {
+    form.start_date = ''
+    form.end_date = ''
   }
 })
 
@@ -340,7 +344,10 @@ const rules = {
   title: [{ required: true, message: '请输入标题' }],
   type: [{ required: true, message: '请选择行程类型' }],
   category: [{ required: true, message: '请选择线上/线下' }],
-  start_date: [{ required: true, message: '请选择日期' }],
+  start_date: [
+    { required: true, message: '请选择日期' },
+    { validator: () => isValidDateRange(form.start_date, form.end_date), message: '结束日期不能早于开始日期' },
+  ],
 }
 
 const modalTitle = computed(() => {
@@ -349,14 +356,12 @@ const modalTitle = computed(() => {
   return '新增行程'
 })
 
-const dateLabel = computed(() =>
-  eventData.value.is_all_day ? '日期' : '日期范围'
-)
+const dateLabel = computed(() => eventData.value.end_date && eventData.value.end_date !== eventData.value.start_date ? '日期范围' : '日期')
 
 const formattedDate = computed(() => {
   const d = eventData.value
   if (!d.start_date) return '--'
-  if (d.is_all_day || d.start_date === d.end_date) return d.start_date
+  if (!d.end_date || d.start_date === d.end_date) return d.start_date
   return `${d.start_date} ~ ${d.end_date}`
 })
 
@@ -552,9 +557,7 @@ async function handleSubmit() {
       is_all_day: timeMode.value === 'allDay',
       start_time: timeMode.value === 'specified' ? timestampToTimeString(startTime.value) : null,
       end_time: timeMode.value === 'specified' ? timestampToTimeString(endTime.value) : null,
-      end_date: timeMode.value === 'allDay'
-        ? form.start_date
-        : (form.end_date || form.start_date),
+      end_date: form.end_date || form.start_date,
       // 兼容旧表：artist_id 取数组第一位
       artist_id: form.artist_ids[0] || null,
       hashtags: normalizeHashtags(form.hashtags).slice(0, 10),

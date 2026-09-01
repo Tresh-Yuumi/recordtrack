@@ -18,7 +18,7 @@
         @click="emit('eventClick', { extendedProps: event })"
       >
         <div class="card-date">
-          <span class="date-day">{{ formatDay(event.start_date) }}</span>
+          <span class="date-day" :class="{ 'date-range-wide': isCrossMonth(event) }">{{ formatDateRange(event) }}</span>
           <span class="date-week">{{ formatWeekday(event.start_date) }}</span>
         </div>
         <div class="card-artists">
@@ -69,9 +69,21 @@ function getEventArtists(dbEvent) {
   return ids.map((id) => props.artists.find((a) => a.id === id)).filter(Boolean)
 }
 
-function formatDay(dateStr) {
-  if (!dateStr) return '--'
-  return dateStr.slice(8).replace(/^0/, '')
+function formatDateRange(event) {
+  const start = event.start_date
+  const end = event.end_date || start
+  if (!start) return '--'
+  const startDay = String(Number(start.slice(8, 10)))
+  if (start === end) return startDay
+  const endDay = String(Number(end.slice(8, 10)))
+  if (start.slice(0, 7) === end.slice(0, 7)) return `${startDay}–${endDay}`
+  const startShort = `${Number(start.slice(5, 7))}/${startDay}`
+  const endShort = `${Number(end.slice(5, 7))}/${endDay}`
+  return start.slice(0, 4) === end.slice(0, 4) ? `${startShort}–${endShort}` : `${start.slice(0, 4)}/${startShort}–${end.slice(0, 4)}/${endShort}`
+}
+
+function isCrossMonth(event) {
+  return Boolean(event.end_date && event.start_date?.slice(0, 7) !== event.end_date.slice(0, 7))
 }
 
 function formatWeekday(dateStr) {
@@ -133,7 +145,7 @@ function formatTime(event) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 48px;
+  min-width: 64px;
   line-height: 1.2;
 }
 .date-day {
@@ -141,6 +153,7 @@ function formatTime(event) {
   font-weight: 700;
   color: #262626;
 }
+.date-day.date-range-wide { font-size: 12px; letter-spacing: -.03em; }
 .date-week {
   font-size: 11px;
   color: #737373;

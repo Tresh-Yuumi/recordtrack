@@ -54,10 +54,10 @@
           </n-alert>
 
           <n-grid class="quick-grid" :cols="2" :x-gap="12">
-            <n-form-item-gi label="日期" :validation-status="!item.start_date ? 'error' : undefined">
+            <n-form-item-gi label="日期范围" :validation-status="!item.start_date || item.end_date < item.start_date ? 'error' : undefined">
               <n-date-picker
-                v-model:formatted-value="item.start_date" type="date" format="yyyy-MM-dd"
-                value-format="yyyy-MM-dd" clearable style="width: 100%" @update:formatted-value="refreshAll"
+                v-model:formatted-value="item.date_range" type="daterange" format="yyyy-MM-dd"
+                value-format="yyyy-MM-dd" clearable style="width: 100%" @update:formatted-value="handleDateRange(item, $event)"
               />
             </n-form-item-gi>
             <n-form-item-gi label="艺人" :validation-status="!item.artist_ids.length ? 'error' : undefined">
@@ -165,7 +165,11 @@ watch(() => props.show, (show) => {
 })
 
 function applyParsedItems(parsedItems, method) {
-  items.value = parsedItems
+  items.value = parsedItems.map((item) => ({
+    ...item,
+    end_date: item.end_date || item.start_date || '',
+    date_range: item.start_date ? [item.start_date, item.end_date || item.start_date] : null,
+  }))
   parseMethod.value = method
   refreshAll()
 }
@@ -207,6 +211,12 @@ function handleTimeMode(item) {
   refreshAll()
 }
 
+function handleDateRange(item, value) {
+  item.start_date = value?.[0] || ''
+  item.end_date = value?.[1] || item.start_date
+  refreshAll()
+}
+
 function isValidTime(value) {
   const match = String(value || '').match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
   return Boolean(match && Number(match[1]) < 24 && Number(match[2]) < 60 && Number(match[3] || 0) < 60)
@@ -216,9 +226,10 @@ function refreshAll() {
   const previous = []
   for (const item of items.value) {
     item.artist_id = item.artist_ids[0] || null
-    item.end_date = item.start_date
+    item.end_date = item.end_date || item.start_date
     item.is_all_day = item.time_mode === 'allDay'
     item.missing = getMissingFields(item)
+    if (item.start_date && item.end_date < item.start_date) item.missing.push('日期范围')
     if (item.time_mode === 'specified') {
       if (!isValidTime(item.start_time)) item.missing.push('开始时间')
       if (!isValidTime(item.end_time)) item.missing.push('结束时间')
@@ -237,7 +248,7 @@ function toPayload(item) {
   return {
     artist_ids: [...item.artist_ids], artist_id: item.artist_ids[0] || null,
     title: item.title.trim(), type: item.type, category: item.category,
-    is_all_day: item.time_mode === 'allDay', start_date: item.start_date, end_date: item.start_date,
+    is_all_day: item.time_mode === 'allDay', start_date: item.start_date, end_date: item.end_date || item.start_date,
     start_time: item.time_mode === 'specified' ? cleanTime(item.start_time) : null,
     end_time: item.time_mode === 'specified' ? cleanTime(item.end_time) : null,
     location: item.location?.trim() || '', notes: item.notes || '', image_urls: [],

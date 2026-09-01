@@ -45,7 +45,7 @@
             <img :src="event.card_image_url || defaultCardImageUrl" alt="" loading="lazy" />
           </span>
           <button type="button" class="event-details" @click="emit('eventClick', { extendedProps: event })">
-            <span class="event-date" :data-tone="index % 4">
+            <span class="event-date" :class="{ 'is-cross-month': isCrossMonth(event) }" :data-tone="index % 4">
               <strong>{{ formatDate(event) }}</strong><small>{{ formatWeekday(event.start_date) }}</small>
             </span>
             <span class="event-copy">
@@ -69,6 +69,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { eventOverlapsMonth } from '../lib/dateRange.js'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -91,7 +92,7 @@ const monthBounds = computed(() => ({
   max: [availableMonths.value.at(-1), `${new Date().getFullYear() + 2}-12`].filter(Boolean).sort().at(-1),
 }))
 const monthEvents = computed(() => props.events
-  .filter((event) => event.start_date?.startsWith(selectedMonth.value))
+  .filter((event) => eventOverlapsMonth(event, selectedMonth.value))
   .sort((a, b) => `${a.start_date}${a.start_time || ''}`.localeCompare(`${b.start_date}${b.start_time || ''}`)))
 const selectedYear = computed(() => selectedMonth.value?.slice(0, 4) || '----')
 const selectedMonthName = computed(() => {
@@ -113,9 +114,16 @@ function getEventArtists(event) {
   return ids.map((id) => props.artists.find((artist) => artist.id === id)).filter(Boolean)
 }
 function formatDate(event) {
-  const start = String(Number(event.start_date?.slice(8, 10)) || '--').padStart(2, '0')
-  const end = String(Number(event.end_date?.slice(8, 10)) || '').padStart(2, '0')
-  return event.end_date && event.end_date !== event.start_date ? `${start}–${end}` : start
+  const startDate = event.start_date || ''
+  const endDate = event.end_date || startDate
+  const start = String(Number(startDate.slice(8, 10)) || '--').padStart(2, '0')
+  if (startDate === endDate) return start
+  const end = String(Number(endDate.slice(8, 10)) || '--').padStart(2, '0')
+  if (startDate.slice(0, 7) === endDate.slice(0, 7)) return `${start}–${end}`
+  return `${startDate.slice(5).replace('-', '/')}–\n${endDate.slice(5).replace('-', '/')}`
+}
+function isCrossMonth(event) {
+  return Boolean(event.end_date && event.start_date?.slice(0, 7) !== event.end_date.slice(0, 7))
 }
 function formatWeekday(date) {
   return date ? weekDays[new Date(`${date}T00:00:00`).getDay()] : ''
@@ -219,6 +227,7 @@ async function downloadPoster() {
 .event-date[data-tone="2"] { background: #a3a3a3; }
 .event-date[data-tone="3"] { background: #e5e5e5; }
 .event-date strong { font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(31px, 6vw, 52px); font-weight: 900; letter-spacing: -.035em; line-height: .92; }
+.event-date.is-cross-month strong { font-size: clamp(15px, 2.8vw, 24px); line-height: .95; text-align: center; white-space: pre-line; }
 .event-date small { margin-top: 5px; font-size: 10px; font-weight: 700; }
 .event-copy { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 18px 0 18px 18px; transition: background-color .18s ease; }
 .event-title-line { display: flex; align-items: flex-start; gap: 14px; }
@@ -249,6 +258,7 @@ async function downloadPoster() {
   .event-image { margin: 10px 7px 10px 0; }
   .event-date { margin: 10px 7px; }
   .event-date strong { font-size: 27px; }
+  .event-date.is-cross-month strong { font-size: 12px; }
   .event-copy { padding: 12px 0 12px 7px; }
   .event-title-line { gap: 6px; }
   .event-title-line > strong { font-size: 12px; }

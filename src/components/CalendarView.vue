@@ -10,6 +10,7 @@ import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
+import { getFullCalendarEndDate } from '../lib/dateRange.js'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -35,9 +36,10 @@ function formatEventForCalendar(dbEvent) {
   const startStr = dbEvent.is_all_day
     ? dbEvent.start_date
     : `${dbEvent.start_date}T${dbEvent.start_time || '00:00'}`
+  const calendarEndDate = getFullCalendarEndDate(dbEvent)
   const endStr = dbEvent.is_all_day
-    ? dbEvent.end_date
-    : `${dbEvent.end_date}T${dbEvent.end_time || '23:59'}`
+    ? calendarEndDate
+    : `${calendarEndDate}T${dbEvent.end_time || '23:59'}`
 
   return {
     id: dbEvent.id,
