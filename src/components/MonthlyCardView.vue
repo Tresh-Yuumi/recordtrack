@@ -70,6 +70,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { eventOverlapsMonth } from '../lib/dateRange.js'
+import '@fontsource/anton/latin-400.css'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -163,6 +164,7 @@ async function downloadPoster() {
       pointerEvents: 'none',
     })
     const exportPoster = posterRef.value.cloneNode(true)
+    exportPoster.classList.add('poster-export')
     Object.assign(exportPoster.style, {
       width: '860px',
       maxWidth: 'none',
@@ -170,6 +172,8 @@ async function downloadPoster() {
     })
     exportFrame.appendChild(exportPoster)
     document.body.appendChild(exportFrame)
+    await document.fonts.load('400 52px Anton', '0123456789-/')
+    await document.fonts.ready
 
     const posterImages = [...exportPoster.querySelectorAll('img')]
     posterImages.forEach((img) => { img.loading = 'eager' })
@@ -322,6 +326,30 @@ async function downloadPoster() {
   .event-meta > span:first-child { max-width: 120px; }
 }
 @keyframes upload-spin { to { transform: rotate(360deg); } }
+/* Export is a desktop-sized document, independent of the device viewport. */
+.schedule-poster.poster-export { border-radius: 4px; }
+.poster-export .poster-header { padding: 56px 64px 24px; }
+.poster-export .poster-kicker { font-size: 13px; }
+.poster-export .poster-heading-row { flex-direction: row; align-items: flex-end; gap: 24px; }
+.poster-export .poster-heading-row h2 { font-size: 92px; }
+.poster-export .poster-month { align-items: flex-end; padding-bottom: 3px; }
+.poster-export .poster-month strong { font-size: 20px; }
+.poster-export .poster-artists { margin-top: 24px; }
+.poster-export .poster-events { padding: 4px 48px 24px; }
+.poster-export .poster-event,
+.poster-export .event-details { grid-template-columns: 112px minmax(0, 1fr); min-height: 124px; }
+.poster-export .event-image { width: calc(100% - 14px); height: 88px; margin-right: 14px; }
+.poster-export .event-date { min-height: 92px; margin: 14px; }
+.poster-export .event-date strong { font-family: 'Anton', sans-serif; font-weight: 400; font-size: 52px; }
+.poster-export .event-date.is-cross-month strong { font-size: 24px; }
+.poster-export .event-date small { font-size: 10px; }
+.poster-export .event-copy { padding: 18px 0 18px 18px; }
+.poster-export .event-title-line { gap: 14px; }
+.poster-export .event-title-line > strong { font-size: 20px; }
+.poster-export .event-time { min-width: 64px; padding: 6px 8px; font-size: 16px; }
+.poster-export .event-meta { gap: 12px; margin-top: 10px; font-size: 12px; }
+.poster-export .event-meta > span:first-child { max-width: none; }
+.poster-export .poster-footer { padding: 14px 48px; gap: 16px; font-size: 10px; letter-spacing: .06em; white-space: normal; }
 @media (prefers-reduced-motion: reduce) {
   .event-copy { transition: none; }
   .event-image-upload.is-uploading::after { animation: none; border-color: #fff; }
