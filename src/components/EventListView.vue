@@ -1,18 +1,19 @@
 <template>
   <div class="list-view">
-    <div v-if="grouped.length === 0" class="empty-hint">
-      <n-text depth="3">暂无行程</n-text>
+    <div class="month-toolbar" aria-label="列表月份切换">
+      <button type="button" @click="changeMonth(-1)">‹ 上月</button>
+      <strong aria-live="polite" aria-atomic="true">{{ monthLabel }}</strong>
+      <button type="button" @click="changeMonth(1)">下月 ›</button>
+      <button type="button" @click="selectedMonth = getCurrentMonth()">回到本月</button>
+    </div>
+    <div v-if="monthEvents.length === 0" class="empty-hint">
+      <n-text depth="3">本月暂无符合条件的行程</n-text>
     </div>
 
-    <template v-for="group in grouped" :key="group.label">
-      <!-- 月份分隔条 -->
-      <div class="month-divider">
-        <span>{{ group.label }}</span>
-      </div>
-
+    <template v-else>
       <!-- 每条行程卡片 -->
       <div
-        v-for="event in group.events"
+        v-for="event in monthEvents"
         :key="event.id"
         class="event-card"
         @click="emit('eventClick', { extendedProps: event })"
@@ -37,8 +38,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { NText } from 'naive-ui'
+import { eventOverlapsMonth } from '../lib/dateRange.js'
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -48,19 +50,24 @@ const emit = defineEmits(['eventClick'])
 
 const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
-// 按月份分组
-const grouped = computed(() => {
-  const map = new Map()
-  for (const e of props.events) {
-    const month = e.start_date?.slice(0, 7) || '--'
-    if (!map.has(month)) {
-      const [y, m] = month.split('-')
-      map.set(month, { label: `${y}年${parseInt(m)}月`, events: [] })
-    }
-    map.get(month).events.push(e)
-  }
-  return [...map.values()]
+function getCurrentMonth() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+const selectedMonth = ref(getCurrentMonth())
+const monthLabel = computed(() => {
+  const [year, month] = selectedMonth.value.split('-')
+  return `${year}年${Number(month)}月`
 })
+const monthEvents = computed(() => props.events
+  .filter((event) => eventOverlapsMonth(event, selectedMonth.value))
+  .sort((a, b) => `${a.start_date}${a.start_time || ''}`.localeCompare(`${b.start_date}${b.start_time || ''}`)))
+
+function changeMonth(offset) {
+  const [year, month] = selectedMonth.value.split('-').map(Number)
+  const date = new Date(year, month - 1 + offset, 1)
+  selectedMonth.value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
 
 function getEventArtists(dbEvent) {
   const ids = dbEvent.artist_ids?.length
@@ -112,17 +119,31 @@ function formatTime(event) {
   padding: 40px 0;
 }
 
-.month-divider {
-  padding: 16px 4px 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #737373;
+.month-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 8px;
   border-bottom: 1px solid #e5e5e5;
   margin-bottom: 4px;
 }
-.month-divider:first-child {
-  padding-top: 4px;
+.month-toolbar strong { font-size: 14px; color: #262626; white-space: nowrap; }
+.month-toolbar button {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #d4d4d4;
+  border-radius: 6px;
+  background: #fff;
+  color: #262626;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
 }
+.month-toolbar button:hover { background: #f5f5f5; }
+.month-toolbar button:active { background: #e5e5e5; }
+.month-toolbar button:focus-visible { outline: 2px solid #262626; outline-offset: 2px; }
 
 .event-card {
   display: flex;
