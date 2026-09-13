@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { eventOverlapsMonth } from '../lib/dateRange.js'
 import '@fontsource/anton/latin-400.css'
 
@@ -82,6 +82,21 @@ const emit = defineEmits(['eventClick', 'imageUpload', 'downloadError'])
 const defaultCardImageUrl = '/monthly-card-default.jpg'
 const posterRef = ref(null)
 const downloading = ref(false)
+let posterRendererPromise = null
+let cachedPoster = null
+
+function loadPosterRenderer() {
+  posterRendererPromise ||= import('modern-screenshot')
+  return posterRendererPromise
+}
+
+onMounted(() => {
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(() => loadPosterRenderer(), { timeout: 2000 })
+  } else {
+    setTimeout(() => loadPosterRenderer(), 0)
+  }
+})
 
 const todayMonth = new Date().toISOString().slice(0, 7)
 const availableMonths = computed(() => [...new Set(
@@ -149,6 +164,17 @@ async function downloadPoster() {
   downloading.value = true
   let exportFrame = null
   try {
+    const cacheKey = JSON.stringify({
+      month: selectedMonth.value,
+      updated: updatedLabel.value,
+      events: monthEvents.value,
+      artists: monthArtists.value.map(({ id, name, emoji }) => ({ id, name, emoji })),
+    })
+    if (cachedPoster?.key === cacheKey) {
+      triggerPosterDownload(cachedPoster.blob)
+      return
+    }
+
     await document.fonts?.ready
 
     exportFrame = document.createElement('div')
@@ -191,13 +217,18 @@ async function downloadPoster() {
     const posterHeight = Math.ceil(Math.max(exportFrame.scrollHeight, rect.height))
     const maxCanvasDimension = 14000
     const pixelRatio = Math.min(2, maxCanvasDimension / Math.max(posterWidth, posterHeight))
-    const { toBlob } = await import('html-to-image')
-    const blob = await toBlob(exportFrame, {
+    const { domToBlob } = await loadPosterRenderer()
+    const blob = await domToBlob(exportFrame, {
       backgroundColor: '#111111',
-      cacheBust: true,
       width: posterWidth,
       height: posterHeight,
-      pixelRatio,
+      scale: pixelRatio,
+      fetch: {
+        requestInit: { cache: 'force-cache' },
+        bypassingCache: false,
+      },
+      font: { preferredFormat: 'woff2' },
+      drawImageInterval: 100,
       style: {
         width: `${posterWidth}px`,
         height: `${posterHeight}px`,
@@ -206,20 +237,25 @@ async function downloadPoster() {
       },
     })
     if (!blob) throw new Error('海报生成失败')
-    const downloadUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.download = `recordtrack-${selectedMonth.value || 'monthly'}.png`
-    link.href = downloadUrl
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+    cachedPoster = { key: cacheKey, blob }
+    triggerPosterDownload(blob)
   } catch {
     emit('downloadError')
   } finally {
     exportFrame?.remove()
     downloading.value = false
   }
+}
+
+function triggerPosterDownload(blob) {
+  const downloadUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.download = `recordtrack-${selectedMonth.value || 'monthly'}.png`
+  link.href = downloadUrl
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
 }
 </script>
 

@@ -4,8 +4,9 @@ import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
-const browser = await chromium.launch({ channel: 'chrome', headless: true })
+const playwright = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
+const browserName = process.env.POSTER_BROWSER || 'chromium'
+const browser = await playwright[browserName].launch(browserName === 'chromium' ? { channel: 'chrome', headless: true } : { headless: true })
 const output = await mkdtemp(join(tmpdir(), 'recordtrack-poster-'))
 const base = process.env.POSTER_TEST_URL || 'http://127.0.0.1:5175'
 const results = []
@@ -20,7 +21,8 @@ try {
       import Poster from '/src/components/MonthlyCardView.vue';
       const events = Array.from({length: 11}, (_, i) => ({ id: i, title: i === 1 ? 'RALPH LAUREN 拉夫劳伦 RALPH’S CLUB NEW YORK BAR 香水发布会' : 'MONTHLY EVENT 行程 ' + i,
         start_date: '2026-09-' + String(i + 1).padStart(2, '0'), end_date: '2026-09-' + String(i + 2).padStart(2, '0'),
-        start_time: '19:00', location: 'The Mall lifestore Bangkapi 完整地点文字', artist_ids: [1, 2] }));
+        start_time: '19:00', location: 'The Mall lifestore Bangkapi 完整地点文字', artist_ids: [1, 2],
+        card_image_url: i % 2 ? 'https://bsmsfssgmyteqbynqkqx.supabase.co/storage/v1/object/public/event-images/public/1788233055770_bab15d79-3d6d-40cc-a07e-eb06e17855f4.jpg' : null }));
       createApp({render: () => h(Poster, { events, artists: [{id: 1, name: 'PERTH', emoji: '🖤'}, {id: 2, name: 'SANTA', emoji: '🤍'}] })}).mount('#app');
       </script></body></html>` }))
     await page.goto(base + '/__poster-test')
@@ -54,6 +56,15 @@ try {
     }
     results.push({ viewport: width, width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20), hash: createHash('sha256').update(bytes).digest('hex'), path })
     assert.equal(await page.locator('.poster-export').count(), 0, 'Export copy must be cleaned up')
+    if (width === 375) {
+      const repeatStarted = performance.now()
+      const repeatDownload = page.waitForEvent('download', { timeout: 5000 })
+      await page.getByRole('button', { name: '下载海报' }).click()
+      await repeatDownload
+      const repeatMs = performance.now() - repeatStarted
+      assert.ok(repeatMs < 1000, `Cached download took ${Math.round(repeatMs)}ms`)
+      console.log(`cached download ${browserName}: ${Math.round(repeatMs)}ms`)
+    }
     await page.close()
   }
   console.log(JSON.stringify(results, null, 2))
