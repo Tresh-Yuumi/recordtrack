@@ -1,6 +1,6 @@
 import { requireAdmin } from './_lib/auth.js'
 
-const EVENT_TYPES = ['商务站台', '演唱会', '见面会', '商务直播', '剧宣', '社媒', '非公开']
+const EVENT_TYPES = ['商务站台', '演唱会', '见面会', '节目/综艺', '商务直播', '剧宣', '社媒', '非公开']
 const EVENT_CATEGORIES = ['线下', '线上']
 const TIME_MODES = ['pending', 'allDay', 'specified']
 const MAX_INPUT_LENGTH = 8000
